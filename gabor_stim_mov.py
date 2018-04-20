@@ -1,3 +1,21 @@
+"""
+From Allen Institute, modified by Colleen
+
+This code has two stimulus components:
+ 1. Several gabors are created using GratingStim and joined into one stimulus
+     using StimulusArray.
+ 2. A numpy movie is created where 5 gabors move toward the center of the 
+     screen. (This takes a bit of time to create the first time the code is 
+     run.)
+
+2 display methods used here:
+ 1. The clock is used to display stimuli (1), move them across the screen
+     and change their orientation once. The sweep parameters (stimuli 1) do not 
+     seem compatible with this method.
+ 2. A session is started which cycles showing 1, then 2. The sweep parameters
+     (stimuli 1) are used by this method.
+"""
+
 from psychopy import visual, monitors, core
 # camstim is the Allen Institute stimulus package built on psychopy
 from camstim import Stimulus, SweepStim, MovieStim
@@ -17,25 +35,27 @@ monitor = monitors.Monitor("testMonitor", distance=dist, width=wid)
 window = Window(fullscr=True,
                 monitor=monitor,  # Will be set to a gamma calibrated profile by MPE
                 screen=0,
-                #warp=Warp.Spherical, # Spherical/Disabled
+                warp=Warp.Spherical, # Spherical/Disabled
                 )
 
 # Obtain monitor dimensions in degrees
-# Appears a bit off - possibly related to flat vs round degrees?
-# Also, I get this warning: User requested fullscreen with size [800 600], but 
-# screen is actually [1536, 864]. Using actual size.
+    # Appears a bit off - possibly related to flat vs round degrees?
+    # Also, I get this warning: 'User requested fullscreen with size [800 600],
+    # but screen is actually [1536, 864]. Using actual size.'
+    # No idea where the [800, 600] is set. Actual screen size is 1980 x 1020
 
-dim = window.monitor.getSizePix() # 1024, 768
+dim = window.monitor.getSizePix() # returns 1024, 768 for me
 
-# flat screen
+# for a flat screen
 deg_wid = np.rad2deg(np.arctan((wid)/dist)) * 2
 deg_per_pix = deg_wid/dim[0]
 deg_hei = deg_per_pix * dim[1]
 
 # settings
-# HAVEN'T FIGURED OUT HOW TO ROTATE GAUSSIAN AND SINE SEPARATELY
-# Not sure how to pass a covariance matrix to maskParams
-# Not clear whether stimuli can move during presentation
+# HAVEN'T FIGURED OUT:
+    # How to rotate gaussian and sine separately
+    # How to pass a covariance matrix to maskParams (does not seem supported)
+    # How to get gabor stimuli to move using a session instead of clock
 
 n_stim = 30 # number of stimuli
 fixPar={ # parameters that stay fixed during presentation
@@ -43,20 +63,19 @@ fixPar={ # parameters that stay fixed during presentation
         'size': (30, 30), # in units
         'sf': 0.06, # spatial frequency (sin) (cycles per deg)
         'phase': (1, 0), # (sin) only set first dim (0 to 1)
-#        'ori': 0 # orientation of mask and texture
+        'ori': 0 # orientation of mask and texture
         }
+# sweep parameters do not work well with clock below
 sweepPar={ # parameters that change during presentation
         'Contrast': ([0.8], 0), # contrast is here as sweepPar must be passed later 
-        'Ori': ([0, 90], 0), # orientation of mask and texture
+        'Ori': ([0, 90], 1), # orientation of mask and texture
          }
 maskPar={ # parameters of the mask
-        'sd': 3, # np.identity(2)*3 for cov matrix?
-                             # nbr of sd on each side of mean in window. 
-                             # Default seems to be 3. Better to change stim
-                             # size
+        'sd': 3, # only supports one value
         }
-sl = 2 # sweep length (in sec)
-r = 8 # number of runs
+sl = 3 # sweep length (in sec)
+r = 1 # number of runs
+d_pos = (0.02, 0.02) # change in position for all stimuli (tuple)
 
 # Create stimuli
 # first create a drifting gratings, which just uses psychopy GratingStim
@@ -64,23 +83,22 @@ r = 8 # number of runs
 # psychopy stimuli should work as well as those developed by the Institute
 # currently locked to version 1.82.01 of psychopy
 
-# sweep parameters are the parameters that will change during presentation
-
 stims = list()
 
+# initialize gabors in different locations on the screen
 for i in range(n_stim):
     pos_x = (np.random.random_sample() - 0.5) * deg_wid #* 2 # haven't quite worked out why this needs to be doubled if no warping
-    # testing edge
-    # pos_x = 0.5*deg_wid
+    # pos_x = 0.5*deg_wid # identify edge
     pos_y = (np.random.random_sample() - 0.5) * deg_hei #* 2 # same
-    # pos_y = 0.5*deg_hei
+    # pos_y = 0.5*deg_hei # identify edge
     
     stims.append(Stimulus(visual.GratingStim(window,
                                              pos=(pos_x, pos_y),
                                              tex='sin',
                                              mask='gauss',
-#                                             maskParams=maskPar,
+                                             maskParams=maskPar,
                                              autoLog=False,
+#                                             autoDraw=True, # use instead of gabors.draw()
                                              **fixPar
                                              ),
                         sweep_params=sweepPar,
@@ -90,10 +108,27 @@ for i in range(n_stim):
 # sweep_length here will overwrite earlier setting, but is required
 gabors = StimulusArray(stims, sweep_length=sl)
 
+# this section runs first (then the session below follows). Sweeps are ignored.
+# cannot escape during this section
+clock = core.Clock()
+
+todo = True
+while clock.getTime() < (11.0):  # clock times are in seconds, can use frames
+    if 5.0 <= clock.getTime() and todo:
+        for x in gabors.stimuli:
+            x.stim.setPos(d_pos, '+')  # move 0.05 degrees up and right
+            x.stim.setOri(90)  # switch to 90 degree orientation
+        todo = False # to do this only once
+        gabors.draw()
+    elif 1.0 <= clock.getTime():
+        for x in gabors.stimuli:
+            x.stim.setPos(d_pos, '+')  # move 0.05 degrees up and right
+        gabors.draw()
+    window.flip() # change stimulus with frame change
+window.flip()
+
 # now create a movie stimulus from a 3D numpy array
 # this is required to be 8-bit greyscale (np.uint8 or np.ubyte)
-# I'm going to create one here, but normally the movie file will
-# just be sitting at the prescribed path
 # camstim expects movies in dimension (t, h, w)
 
 moviesource = os.path.abspath("./example_gabor_mul.npy")
@@ -192,8 +227,8 @@ movie = MovieStim(movie_path=moviesource,
                   runs=10,)
 
 # set display sequences as ranges of time to run in seconds
-movie_ds = [(16, 80)]
-gabors_ds = [(0, 15)]
+movie_ds = [(2*sl*r+1, 4*sl*r)]
+gabors_ds = [(0, 2*sl*r)]
 
 gabors.set_display_sequence(gabors_ds)
 movie.set_display_sequence(movie_ds)
@@ -206,14 +241,6 @@ ss = SweepStim(window,
                post_blank_sec=1,
                params={},  # will be set by MPE to work on the rig
                )
-
-## add in foraging so we can track wheel, potentially give rewards, etc
-#f = Foraging(window=window,
-#             auto_update=False,
-#             params={},
-#             nidaq_tasks={'digital_input': ss.di,
-#                          'digital_output': ss.do})
-#ss.add_item(f, "foraging")
 
 # run it
 ss.run()
