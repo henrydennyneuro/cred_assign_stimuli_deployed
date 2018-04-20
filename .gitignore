@@ -1,0 +1,7 @@
+*.exe
+*.md
+*.npy
+*.txt
+
+/camstim/
+/colleen/
