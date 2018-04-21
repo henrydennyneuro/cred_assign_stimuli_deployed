@@ -1,5 +1,6 @@
 *.exe
 *.npy
+*.pyc
 *.txt
 
 /camstim/

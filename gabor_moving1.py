@@ -16,7 +16,7 @@ This code has two stimulus components:
      (stimuli 1) are used by this method.
 """
 
-from psychopy import visual, monitors, core
+from psychopy import visual, monitors, core, event
 # camstim is the Allen Institute stimulus package built on psychopy
 from camstim import Stimulus, SweepStim, MovieStim
 from camstim.sweepstim import StimulusArray
@@ -35,7 +35,7 @@ monitor = monitors.Monitor("testMonitor", distance=dist, width=wid)
 window = Window(fullscr=True,
                 monitor=monitor,  # Will be set to a gamma calibrated profile by MPE
                 screen=0,
-                warp=Warp.Spherical, # Spherical/Disabled
+                #warp=Warp.Spherical, # Spherical/Disabled
                 )
 
 # Obtain monitor dimensions in degrees
@@ -54,15 +54,14 @@ deg_hei = deg_per_pix * dim[1]
 # settings
 # HAVEN'T FIGURED OUT:
     # How to rotate gaussian and sine separately
-    # How to pass a covariance matrix to maskParams (does not seem supported)
     # How to get gabor stimuli to move using a session instead of clock
 
 n_stim = 30 # number of stimuli
 fixPar={ # parameters that stay fixed during presentation
         'units': 'deg',
-        'size': (30, 30), # in units
+        'size': (30, 60), # in units, gaussian cov derived from these values
         'sf': 0.06, # spatial frequency (sin) (cycles per deg)
-        'phase': (1, 0), # (sin) only set first dim (0 to 1)
+        'phase': 1, # (sin) (0 to 1)
         'ori': 0 # orientation of mask and texture
         }
 # sweep parameters do not work well with clock below
@@ -114,15 +113,18 @@ clock = core.Clock()
 
 todo = True
 while clock.getTime() < (11.0):  # clock times are in seconds, can use frames
-    if 5.0 <= clock.getTime() and todo:
+    if event.getKeys(keyList=['escape', 'q']):
+        window.close()
+        core.quit()
+    elif 5.0 <= clock.getTime() and todo:
         for x in gabors.stimuli:
-            x.stim.setPos(d_pos, '+')  # move 0.05 degrees up and right
-            x.stim.setOri(90)  # switch to 90 degree orientation
+            x.stim.pos += d_pos  # move 0.05 degrees up and right
+            x.stim.ori = 90  # switch to 90 degree orientation
         todo = False # to do this only once
         gabors.draw()
     elif 1.0 <= clock.getTime():
         for x in gabors.stimuli:
-            x.stim.setPos(d_pos, '+')  # move 0.05 degrees up and right
+            x.stim.pos += d_pos  # move 0.05 degrees up and right
         gabors.draw()
     window.flip() # change stimulus with frame change
 window.flip()
