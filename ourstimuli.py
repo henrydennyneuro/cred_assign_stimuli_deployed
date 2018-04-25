@@ -47,6 +47,9 @@ class OurStims(ElementArrayStim):
             self.nStims = self.elemarr.nElements
             self.elemarr.contrs = contrast
             self.win = self.elemarr.win # just overriding redundancy to avoid any problems
+            direc = direc%360.0
+            if direc < 0:
+                direc = 360 - direc
             self.direc = direc
             self._winVar()
             self._stimOriginVar()
@@ -133,7 +136,7 @@ class OurStims(ElementArrayStim):
         print(self.init_hei)
         
         if self.direc%90.0 != 0.0:
-            self.ratio = self.dirRad%90.0/basedirRad
+            self.ratio = self.dirRad%(np.pi/2)/basedirRad
             self.leng = self.init_wid*self.ratio + self.init_hei/self.ratio
         
         

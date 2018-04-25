@@ -74,8 +74,8 @@ fixParGab={ # parameters set by ElementArrayStim
 fixParSqu={
         'units': 'deg',
          'fieldSize': [wid_deg*2, hei_deg*2],
-        'nElements': 1000,
-        'sizes': (8, 8),
+        'nElements': 200,
+        'sizes': (10, 3),
         'elementTex': None,
         'elementMask': 'sqr',
         'name': 'bricks',
@@ -90,7 +90,7 @@ specParGab={ # parameters set by OurStims
         }
 
 specParSqu={
-         'direc':0.0, # 0 is straight right (goes counter-clockwise)
+         'direc':0.0, # 0 is straight right (goes counter-clockwise) 
          'speed':3, # units sort of arbitrary right now
          'flipspeed':[[3, 5]], # when to flip direction
          'flipfrac':0.2, # fraction of elements that should be flipped (0 to 1)
