@@ -129,7 +129,7 @@ sq = Stimulus(ourstimsqu,
               )
 
 gb_ds = [(0, 8.0)] # ranges to run in sec
-sq_ds = [(8.0, 15.0)]
+sq_ds = [(8.0, 18.0)]
 
 gb.set_display_sequence(gb_ds)
 sq.set_display_sequence(sq_ds)

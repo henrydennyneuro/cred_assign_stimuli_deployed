@@ -65,6 +65,7 @@ class OurStims(ElementArrayStim):
             self.flipfrac = float(flipfrac)
             if self.flipfrac < 0.0 or self.flipfrac > 1.0:
                 raise ValueError('Specify a flipfrac between 0.0 and 1.0.')
+            self.randel = None
             
             self.newori = [x * float(fps) for x in newori]
             self.oriparamlist = oriparamlist
@@ -130,7 +131,7 @@ class OurStims(ElementArrayStim):
         elif quad == 3:
             self.buffsign = np.array([1, -1])
         basedirRad = np.arctan(1.0*self.init_hei/self.init_wid)
-        self.buff = (self.init_wid+self.init_hei)/40 # size of initialization area (15 is arbitrary)
+        self.buff = (self.init_wid+self.init_hei)/20 # size of initialization area (15 is arbitrary)
         print(self.buff)
         print(self.init_wid)
         print(self.init_hei)
@@ -161,12 +162,21 @@ class OurStims(ElementArrayStim):
     def _newStimsXY(self, newStims):
         # for first initialization, initialize gaussians on screen
 
-        if self.initScr:
-            coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
-            coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
-            coords = np.concatenate((coords_wid, coords_hei), axis=1)
+        if self.initScr: # initialize a percentage on screen and in buffer areas
+            if self.direc%180.0 == 0.0: # I stim origin case:
+                coords_wid = np.random.uniform(-self.init_wid/2-self.buff, self.init_wid/2+self.buff, newStims)[:, np.newaxis]
+                coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+                print('I add width')
+            elif self.direc%90.0 == 0.0:
+                coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                coords_hei = np.random.uniform(-self.init_hei/2-self.buff, self.init_hei/2+self.buff, newStims)[:, np.newaxis]
+                print('I add height')
+            else:
+                coords_wid = np.random.uniform(-self.init_wid/2-self.buff, self.init_wid/2+self.buff, newStims)[:, np.newaxis]
+                coords_hei = np.random.uniform(-self.init_hei/2-self.buff, self.init_hei/2+self.buff, newStims)[:, np.newaxis]
+            self.coords = np.concatenate((coords_wid, coords_hei), axis=1)
             self.initScr = False
-            return coords
+            return self.coords
         
         # subsequent initializations from L around window (or I if mult of 90)
         else:            
@@ -216,32 +226,40 @@ class OurStims(ElementArrayStim):
         dead = np.zeros(self.nStims, dtype=bool)
     
         #stims that have exited the field
-        dead = dead+(np.abs(self.elemarr.xys[:,0]) > (self.init_wid/2 + self.buff))
-        dead = dead+(np.abs(self.elemarr.xys[:,1]) > (self.init_hei/2 + self.buff))
+        dead = dead+(np.abs(self.coords[:,0]) > (self.init_wid/2 + self.buff))
+        dead = dead+(np.abs(self.coords[:,1]) > (self.init_hei/2 + self.buff))
+        
+        # flip speed (i.e., direction) if needed
+        if self.countframes in self.flipstart:
+            self.randel = np.where(np.random.rand(self.nStims) < self.flipfrac)[0]
+            self.speed[self.randel] = -self.defaultspeed
+            if self.randel.size == 0: # in case no elements are selected
+                self.randel = None
+        elif self.countframes in self.flipend:
+            if self.randel.size is not None:
+                self.speed[self.randel] = self.defaultspeed
+            self.randel = None
+        
+        # revive and flip direction on flipped stimuli out of bounds
+        if self.randel is not None and dead[self.randel].any():
+            self.speed[self.randel[np.where(dead[self.randel])[0]]] = self.defaultspeed
+            dead[self.randel]=False
         
         ##update XY based on speed and dir
-        new_xs = self.elemarr.xys[:,0] + self.speed*np.cos(self.dirRad)
-        new_ys = self.elemarr.xys[:,1] + self.speed*np.sin(self.dirRad)# 0 radians=East!
+        new_xs = self.coords[:,0] + self.speed*np.cos(self.dirRad)
+        new_ys = self.coords[:,1] + self.speed*np.sin(self.dirRad)# 0 radians=East!
         
-        all_coords = np.array([new_xs, new_ys]).transpose()
+        self.coords = np.array([new_xs, new_ys]).transpose()
         
         #update any dead stims
-        if sum(dead):
-            all_coords[dead,:] = self._newStimsXY(sum(dead))
+        if dead.any():
+            self.coords[dead,:] = self._newStimsXY(sum(dead))
         
-        self.elemarr.setXYs(all_coords)
+        self.elemarr.setXYs(self.coords)
         
         # change orientation if needed
         if self.countframes in self.newori:
             self.elemarr.oris = self.oriarrays[self.newori.index(self.countframes)]
-        
-        # flip speed (i.e., direction) if needed
-        self.randel = None
-        if self.countframes in self.flipstart:
-            self.randel = np.random.rand(self.nStims) < self.flipfrac
-            self.speed[self.randel] = - self.speed[self.randel]
-        elif self.countframes in self.flipend:
-            self.speed[self.randel] = self.defaultspeed
     
     def _initOriArrays(self):
         """
