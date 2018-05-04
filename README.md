@@ -4,10 +4,13 @@ Specifically, the stimuli will be:
 1. Sparse Gabor sequences
 2. Optic flow mismatch bricks
 
-Based on: https://www.biorxiv.org/content/biorxiv/early/2017/10/03/197608.full.pdf
+Stimuli based on: https://www.biorxiv.org/content/biorxiv/early/2017/10/03/197608.full.pdf
+http://www.jneurosci.org/content/28/30/7520
 
 To run:
-Run our_example_stimuli.py
+For Gabor stimuli: gabor_exp.py
+
+
 
 Dependencies:
 - python 2.7
@@ -15,5 +18,5 @@ Dependencies:
 - camstim
 
 Note:
-- The AIBS package camstim appears to require pywin32 and the experiments are run using a computer running Windows.
+- The AIBS package camstim appears to require pywin32 and the experiments are run on Windows.
 

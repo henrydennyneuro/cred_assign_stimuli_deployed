@@ -22,12 +22,12 @@ if __name__ == "__main__":
     dist = 15.0
     wid = 52.0
     
-    # load and record parameters?
+    # load and record parameters. Leave False.
     promptID = False
             
     # create a monitor
     monitor = monitors.Monitor("testMonitor", distance=dist, width=wid)
-    
+
     # get animal ID and session ID
     if promptID == True: # using a prompt
         myDlg = tk.Tk()
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     window = Window(fullscr=True, # Will return an error due to default size. Ignore.
                     monitor=monitor,  # Will be set to a gamma calibrated profile by MPE
                     screen=0,
-                    warp=Warp.Spherical,
+#                    warp=Warp.Spherical,
                     )
     
     gb = gabor_params.init_run_gabors(window, subj_id, sess_id)

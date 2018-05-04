@@ -18,20 +18,20 @@ GABOR_PARAMS = {
                 ### PARAMETERS TO SET (will only be used for new IDs)
                 'n_gabors': 100,
                 # range of size of gabors to sample from (height and width set to same value)
-                'size_ran': [10, 20], # in deg (regardless of units below), 
+                'size_ran': [20, 40], # in deg (regardless of units below), 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
-                'phase': 0.25, # centers gabor transition
+                'phase': 0.25, #value 0-1
                 
                 'oris': [0.0, 45.0, 90.0, 135.0], # orientation means to use (deg)
                 'ori_std': [0.25, 0.5], # orientation st dev to use (rad) (do not pass 0)
                 
-                'im_len': 1, # duration (sec) of each image (e.g., A)
+                'im_len': 0.3, # duration (sec) of each image (e.g., A)
                 'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
                 'surp_len': [3, 6], # range of durations (sec) for seq of surprise sets
-                'kap_len': 60, # duration (sec) of each kappa setting
+                'kap_len': 17*60, # duration (sec) of each kappa setting
                 
                 ### Changing these will require tweaking downstream...
-                'units': 'pix', # avoid using deg, comes out wrong?
+                'units': 'pix', # avoid using deg, comes out wrong at least on my computer (scaling artifact? 1.7)
                 'n_im': 4 # nbr of images per set (A, B, C, D/E)
                 }
 
@@ -45,15 +45,13 @@ def winVar(win, units):
     
     # get values to convert deg to pixels
     deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
-    # win.size returns wrong values [1536, 864]...
     deg_per_pix = deg_wid/win.size[0] # about 0.07
     
     if units == 'deg':
         deg_hei = deg_per_pix * win.size[1] # about 67
-        # not clear why I need to double them. Still falls short for width 
-        # without warp, probably due to wrong monitor size??
-        init_wid = deg_wid * 2.0 
-        init_hei = deg_hei * 2.0 
+        # Something is wrong with deg as this does not fill screen
+        init_wid = deg_wid
+        init_hei = deg_hei
         fieldSize = [init_wid, init_hei]
 
     elif units == 'pix':
@@ -230,6 +228,14 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, gabor_params['units'])
     
+    # convert values to pixels if necessary
+    if gabor_params['units'] == 'pix':
+        size_ran = [x/deg_per_pix for x in gabor_params['size_ran']]
+        sf = gabor_params['sf']*deg_per_pix
+    else:
+        size_ran = gabor_params['size_ran']
+        sf = gabor_params['sf']
+    
     # parameter loading and recording steps are only done if a subj_id
     # is passed.
     # find whether parameters have been saved for this animal
@@ -246,13 +252,6 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
             print('Existing subject config used: {}.'.format(config_file))
     else:
         subj_params = {}
-        # convert values to pixels if necessary
-        if gabor_params['units'] == 'pix':
-            size_ran = gabor_params['size_ran']/deg_per_pix
-            sf = gabor_params['sf']/deg_per_pix
-        else:
-            size_ran = gabor_params['size_ran']
-            sf = gabor_params['sf']
         # get positions and sizes for each image (A, B, C, D, E)
         subj_params['possize'] = possizearrays(size_ran, 
                                                fieldsize, 
@@ -265,12 +264,6 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
             with open(config_file, 'w') as f:
                 pkl.dump(subj_params, f)
                 print('New subject config saved under: {}'.format(config_file))
-    
-    # convert values to pixels if necessary
-    if gabor_params['units'] == 'pix':
-            sf = gabor_params['sf']/deg_per_pix
-    else:
-        sf = gabor_params['sf']
     
     # establish a pseudorandom order or orientations to cycle through
     # (surprise and current kappa integrated as well)    
@@ -307,8 +300,9 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     fixPar={ # parameters set by ElementArrayStim
             'units': gabor_params['units'],
             'nElements': gabor_params['n_gabors'], # number of stimuli on screen
-            'phases': gabor_params['phase'], # (sin) (0 to 1)
-            'sfs': sf,
+            'fieldShape': 'sqr',
+            'contrs': 1.0,
+            'phases': gabor_params['phase'],
             'elementTex': 'sin',
             'elementMask': 'gauss',
             'name': 'gabors',
@@ -322,7 +316,7 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     # Create the stimulus array
     gabors = visual.ElementArrayStim(window, **fixPar)
     
-    ourstimgab = OurStims(window, gabors, fieldsize, 
+    ourstimgab = OurStims(gabors.win, gabors, fieldsize, sf=sf, 
                           possizes=subj_params['possize'])
     
     gb = Stimulus(ourstimgab,

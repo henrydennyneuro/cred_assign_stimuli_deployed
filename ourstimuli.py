@@ -22,17 +22,18 @@ class OurStims(ElementArrayStim):
                  win,
                  elemarr,
                  fieldSize, # [wid, hei]
-                 units='deg',
+                 units='pix',
                  direc=0.0, # only supports a single value. Use speed to flip direction of some elements.
                  speed=0.0, # units are sort of arbitrary for now
                  sizeparams=None, # range from which to sample uniformly [min, max]. Height and width sampled separately from same range.
                  possizes=None, # zipped lists of pos and sizes (each same size as nStims) for A, B, C, D, E
+                 sf=None, # if spatial freq is specific in cycles/pix (as elementarray does not use this)
                  cyc=None, # number of cycles visible (for Gabors)
                  newpos=[], # frames at which to reinitialize stimulus positions
                  newori=[0], # frames at which to change stimulus orientations (always include 0)
                  orimus=[0.0], # parameter (mu) to use when setting/changing stimulus orientations in deg
                  orikappa=0, # dispersion for sampling orientations (radians)
-                 flipspeed=[], # intervals during which to flip speed [start, end (optional)]S
+                 flipdirec=[], # intervals during which to flip direction [start, end (optional)]S
                  flipfrac=1.0, # fraction of elements that should be flipped (0 to 1)
                  duration=-1, # duration in frames (-1 for no end)
                  initScr=True, # initialize elements on the screen
@@ -50,9 +51,10 @@ class OurStims(ElementArrayStim):
             
             super(OurStims, self).__init__(win, units=units, name=name, autoLog=False)#set autoLog at end of init
             
-            self.elemarr.contrs = contrast
-            self.win = self.elemarr.win # just overriding redundancy to avoid any problems
+            self.elemarr.setContrs(contrast)
             
+            self.elemarr.setFieldSize(fieldSize)
+            self.units = units
             self.init_wid = fieldSize[0]
             self.init_hei = fieldSize[1]
             
@@ -63,7 +65,11 @@ class OurStims(ElementArrayStim):
                 self.sizeparams = val2array(sizeparams) #if single value, returns it twice
                 self._initSizes(self.nStims)
                 
-            self.cyc = cyc
+            self.cyc = cyc      
+            self.sf = sf
+            
+            if self.sf is not None and self.units == 'deg':
+                self.elemarr.setSfs(self.sf)
             
             self.setDirec(direc)
             self._stimOriginVar()
@@ -73,12 +79,12 @@ class OurStims(ElementArrayStim):
             
             self.defaultspeed = speed
             self.speed = np.ones(self.nStims)*speed
-            self.flipspeed = flipspeed
-            if len(self.flipspeed) != 0: # get frames from sec
-                self.flipspeed = [[y * float(fps) for y in x] for x in self.flipspeed]
+            self.flipdirec = flipdirec
+            if len(self.flipdirec) != 0: # get frames from sec
+                self.flipdirec = [[y * float(fps) for y in x] for x in self.flipdirec]
                 self.flipfrac = float(flipfrac)
                 self.randel = None
-                self._initFlipSpeed(self.flipspeed)
+                self._initFlipDirec()
             
             self.newori = [x * float(fps) for x in newori] # get frames from sec
             self.orimus = orimus
@@ -161,14 +167,6 @@ class OurStims(ElementArrayStim):
             ori_array = np.rad2deg(ori_array_rad)
         
         self.elemarr.setOris(ori_array, operation, log)
-        
-#        # when setting new orientations, also set new positions
-#        self.initScr = True
-#        self.elemarr.setXYs(self._newStimsXY(self.nStims))
-#        
-#        # when setting new orientations, also resample sizes if params are passed
-#        if self.sizeparams is not None:
-#            self.setSizeParams(self.sizeparams)
     
     def setSizesAll(self, sizes, operation='', log=None):
         """Set new sizes.
@@ -176,12 +174,22 @@ class OurStims(ElementArrayStim):
         """
         
         self.elemarr.setSizes(sizes, operation, log)
-        
+        self.adjustSF(sizes)
+    
+    def adjustSF(self, sizes):
         # update spatial frequency to fit with set nbr of visible cycles
+        
         if self.cyc is not None:
             sfs = self.cyc/sizes
             self.elemarr.setSfs(sfs)
         
+        # if units are pixels and sf is provided, update spatial frequency 
+        # cyc/stim_wid (which is what elementarray expects)
+        if self.sf is not None and self.units == 'pix':
+            sfs = [self.sf * x for x in sizes]
+            self.elemarr.setSfs(sfs)
+            
+            
     def setSizeParams(self, size_params, operation='', log=None):
         """Allows Sweeps to set new sizes based on parameters (same width and height).
         Pass tuple [mu, std (optional)]
@@ -201,11 +209,8 @@ class OurStims(ElementArrayStim):
 #            sizes = zip(size_w, size_h)
         
         self.elemarr.setSizes(sizes, operation, log)
-        
-        # update spatial frequency to fit with set nbr of visible cycles
-        if self.cyc is not None:
-            sfs = self.cyc/sizes
-            self.elemarr.setSfs(sfs)
+        self.adjustSF(sizes)
+            
                 
     def setPosAll(self, pos, operation='', log=None):
         """Set new positions.
@@ -224,11 +229,7 @@ class OurStims(ElementArrayStim):
         
         self.elemarr.setXYs(pos, operation, log)
         self.elemarr.setSizes(sizes, operation, log)
-        
-        # update spatial frequency to fit with set nbr of visible cycles
-        if self.cyc is not None:
-            sfs = self.cyc/sizes
-            self.elemarr.setSfs(sfs)
+        self.adjustSF(sizes)
         
         # if it's the D (3rd set) of a surprise round, switch orientation mu
         # and switch positions to E
@@ -238,6 +239,7 @@ class OurStims(ElementArrayStim):
             size = self.possizes[4][1]
             self.elemarr.setXYs(pos, operation, log)
             self.elemarr.setSizes(size, operation, log)
+            self.adjustSF(size)
             self.orimu = (self.orimu + 90)%360
             self.countsets = 0
         
@@ -273,21 +275,21 @@ class OurStims(ElementArrayStim):
             self.leng = self.init_wid*self.ratio + self.init_hei/self.ratio
         
         
-    def _initFlipSpeed(self, flipspeed):      
+    def _initFlipDirec(self):      
         self.flipstart = list()
         self.flipend = list()
         
-        for i, flip in enumerate(flipspeed):
+        for i, flip in enumerate(self.flipdirec):
             flip = val2array(flip) #if single value, returns it twice
             if flip.size > 2:
                 raise ValueError('Too many parameters.')
             else:
                 self.flipstart.append(flip[0])
             if flip[0] == flip[1]: # assume last end possible if same value (originally single value)
-                if i == len(flipspeed) - 1:
+                if i == len(self.flipdirec) - 1:
                     self.flipend.append(-1)
                 else:
-                    self.flipend.append(flipspeed[i+1][0] - 1)
+                    self.flipend.append(self.flipdirec[i+1][0] - 1)
             else:
                 self.flipend.append(flip[1])
         
@@ -365,7 +367,7 @@ class OurStims(ElementArrayStim):
         dead = dead+(np.abs(self.coords[:,1]) > (self.init_hei/2 + self.buff))
 
         # if there is speed flipping, update stimulus speeds to be flipped
-        if len(self.flipspeed) != 0:
+        if len(self.flipdirec) != 0:
             dead = self._update_stim_speed(dead)
         
         ##update XY based on speed and dir
@@ -451,11 +453,6 @@ class OurStims(ElementArrayStim):
         again.
         """
         
-        if win is None:
-            win=self.win
-        self._selectWindow(win)
-
-        
         # update if new positions (newpos)
         if len(self.newpos) > 0 and self.countframes in self.newpos:
             self._update_stim_pos()
@@ -467,9 +464,9 @@ class OurStims(ElementArrayStim):
         self.elemarr.draw()
         
         # check for end
-        self._check_keys()
-        if self.countframes == self.duration:
-            self.win.close()
+#        self._check_keys()
+#        if self.countframes == self.duration:
+#            self.win.close()
         
         # count frames
         self.countframes += 1
