@@ -18,7 +18,7 @@ GABOR_PARAMS = {
                 ### PARAMETERS TO SET (will only be used for new IDs)
                 'n_gabors': 100,
                 # range of size of gabors to sample from (height and width set to same value)
-                'size_ran': [20, 40], # in deg (regardless of units below), 
+                'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
                 'phase': 0.25, #value 0-1
                 
@@ -235,6 +235,11 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     else:
         size_ran = gabor_params['size_ran']
         sf = gabor_params['sf']
+    
+    # size is set as where gauss std=3 on each side (so size=6 std). 
+    # Convert from full-width half-max
+    gabor_modif = 6/2*np.sqrt(2*np.log(2))
+    size_ran = [np.around(x * gabor_modif, decimals=2) for x in size_ran]
     
     # parameter loading and recording steps are only done if a subj_id
     # is passed.
