@@ -9,8 +9,11 @@ http://www.jneurosci.org/content/28/30/7520
 
 To run:
 For Gabor stimuli: gabor_exp.py
+For Square stimuli: square_exp.py
 
-
+Additional scripts:
+ourstimuli.py - Class used to build gabors and squares.
+stim_params.py - Initializes stimuli and their parameters.
 
 Dependencies:
 - python 2.7

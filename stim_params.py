@@ -4,18 +4,19 @@ import pickle as pkl
 import os
 import numpy as np
 import random
+import itertools
 
 from camstim import Stimulus
 from ourstimuli import OurStims
 
-""" Functions to initialize parameters for gabors, load them if necessary,
-save them, and create stimulus.
+""" Functions to initialize parameters for gabors or squares, load them if necessary,
+save them, and create stimuli.
 
 Parameters are set here.
 """
 
 GABOR_PARAMS = {
-                ### PARAMETERS TO SET (will only be used for new IDs)
+                ### PARAMETERS TO SET
                 'n_gabors': 100,
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
@@ -33,6 +34,25 @@ GABOR_PARAMS = {
                 ### Changing these will require tweaking downstream...
                 'units': 'pix', # avoid using deg, comes out wrong at least on my computer (scaling artifact? 1.7)
                 'n_im': 4 # nbr of images per set (A, B, C, D/E)
+                }
+
+SQUARE_PARAMS = {
+                ### PARAMETERS TO SET
+                'sizes': [8, 16], # in deg (regardless of units below)
+                'direcs': ['right', 'left'], # main direction 
+                'speed': 50, # deg/sec (regardless of units below)
+                'flipfrac':0.25, # fraction of elements that should be flipped (0 to 1)
+                
+                'seg_len': 1, # duration (sec) of each segment
+                'reg_len': [30, 90], # range of durations (sec) for reg flow
+                'surp_len': [2, 4], # range of durations (sec) for mismatch flow
+                'set_len': 9*60, # duration (sec) of set (sizexdirec)
+                
+                ### Changing these will require tweaking downstream...
+                'units': 'pix', # avoid using deg, comes out wrong at least on my computer (scaling artifact? 1.7)
+                
+                ## MAY CAUSE PROBLEMS. OTHER WAY TO GET THIS?
+                'fps': 60 # frames per sec, default is 60 in camstim
                 }
 
 
@@ -193,7 +213,7 @@ def oriparsurpgenerator(oris, kaps, seqperkap):
             surpsublist.extend(surpadd)
         kapsublist = np.ones_like(surpsublist) * kaps[k]
         
-        orisurplist.append(zip(orisublist, kapsublist, surpsublist))
+        orisurplist.extend(zip(orisublist, kapsublist, surpsublist))
         
     
     return orisurplist
@@ -222,7 +242,199 @@ def oriparsurporder(oris, n_im, im_len, reg_len, surp_len, kaps, kap_len):
 
     return oriparsurplist
 
+
+def flipdirecgenerator(flipcode, setorder, segperset):
+    """
+    Flipcode should have a length of 2. Should be [0, 1] with 0 for regular
+    flow and 1 for mismatch flow.
+    Setorder contains a list of ((size, n_Squares), direc)
+    """
+    flipdireclist = list()
     
+    for s, thisset in enumerate(segperset): # each set (sizexdirec)
+        surpsublist = list()
+        for i, (reg, surp) in enumerate(zip(thisset[0], thisset[1])):     
+            # deal with gen
+            regadd = [flipcode[0]] * reg
+            surpadd = [flipcode[1]] * surp
+            surpsublist.extend(regadd)
+            surpsublist.extend(surpadd)
+            
+        sizesublist = [setorder[s][0][0]] * len(surpsublist)
+        nsqusublist = [setorder[s][0][1]] * len(surpsublist)
+        direcsublist = [setorder[s][1]] * len(surpsublist)
+        
+        flipdireclist.extend(zip(surpsublist, sizesublist, nsqusublist,
+                                 direcsublist))
+    
+    return flipdireclist
+
+
+def flipdirecorder(seg_len, reg_len, surp_len, set_len, setorder):
+    """    
+    Return an amazing list of when direction should be regular and 
+    when to flip
+    
+    """
+    seg_len # duration of set (incl. one blank per set)
+    reg_segs = [x/seg_len for x in reg_len] # range of nbr of segs per regular seq, e.g. 30-90
+    surp_segs = [x/seg_len for x in surp_len] # range of nbr of segs per surprise seq, e.g., 2-4
+    set_segs = set_len/seg_len # nbr of segs per set, e.g. 540
+    n_sets = len(setorder)
+    
+    # get seg lengths
+    segperset = createseqlen(set_segs, reg_segs, surp_segs, n_sets)
+    
+    # flip code: [reg, flip]
+    flipcode = [0, 1]
+    
+    # from seq durations get a list each kappa or (ori, surp=0 or 1)
+    flipdireclist = flipdirecgenerator(flipcode, setorder, segperset)
+
+    return flipdireclist
+
+
+def load_config(stimtype, subj_id):
+    config_root = '.\config'
+    config_name = '{}_subj{}_config.pkl'.format(stimtype, subj_id)
+    config_file = os.path.join(config_root, config_name)
+    
+    # if they exist, retrieve the parameters specific to the subject.
+    # otherwise, create them
+    if subj_id is not None and os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            subj_params = pkl.load(f)
+            print('Existing subject config used: {}.'.format(config_file))
+        return subj_params
+    else:
+        return None
+
+
+def save_config(stimtype, subj_id, subj_params):
+    config_root = '.\config'
+    config_name = '{}_subj{}_config.pkl'.format(stimtype, subj_id)
+    config_file = os.path.join(config_root, config_name)
+    
+    # if config directory does not exist, create it
+    if not os.path.exists(config_root):
+        os.makedirs(config_root)
+    
+    with open(config_file, 'w') as f:
+        pkl.dump(subj_params, f)
+        print('New subject config saved under: {}'.format(config_file))
+
+    
+def save_session_config(stimtype, subj_id, sess_id, subj_params):
+    config_root = '.\config'
+    all_config_name = '{}_subj{}_sess{}_config'.format(stimtype, subj_id, sess_id)
+    all_config_ext = '.pkl'
+    all_config_file = os.path.join(config_root, all_config_name + all_config_ext)
+    
+    # if config directory does not exist, create it
+    if not os.path.exists(config_root):
+        os.makedirs(config_root)
+    
+    # save the parameters for this subject and session
+    if os.path.exists(all_config_file):
+        i = 0
+        all_config = '{}_{}{}'.format(all_config_name, i, all_config_ext)
+        all_config_file = os.path.join(config_root, all_config)
+        while os.path.exists(all_config_file):
+           i +=1
+           all_config = '{}_{}{}'.format(all_config_name, i, all_config_ext)
+           all_config_file = os.path.join(config_root, all_config)
+    
+    with open(all_config_file, 'w') as f:
+        pkl.dump(subj_params, f)
+        print('Session parameters saved under: {}'.format(all_config_file))
+
+
+def init_run_squares(window, subj_id, sess_id, square_params=SQUARE_PARAMS):
+     # get fieldsize in units and deg_per_pix
+    fieldsize, deg_per_pix = winVar(window, square_params['units'])
+    
+    # convert values to pixels if necessary
+    if square_params['units'] == 'pix':
+        sizes = [np.around(x/deg_per_pix) for x in square_params['sizes']]
+        speed = square_params['speed']/deg_per_pix
+    else:
+        sizes = square_params['size']
+        speed = square_params['speed']
+    
+    # convert speed for units/s to units/frame
+    speed = np.around(speed/square_params['fps'], decimals=4)
+    
+    # calculate number of squares for each square size
+    area = fieldsize[0]*fieldsize[1]
+    squarea = [np.square(x) for x in sizes]
+    n_Squares = [int(0.5*area/x) for x in squarea]
+    
+    # parameter loading and recording steps are only done if a subj_id
+    # is passed.
+    # find whether parameters have been saved for this animal
+    if subj_id is not None:
+        subj_params = load_config('sq', subj_id)
+    
+    if subj_id is None or subj_params is None:
+        subj_params = {}
+        
+        # set set order for each subject
+        basic = list(itertools.product(zip(sizes, n_Squares), 
+                                       square_params['direcs']))
+        random.shuffle(basic)
+        setorder = basic[:]
+        
+        subj_params['set_order'] = setorder
+    
+        if subj_id is not None:
+            save_config('sq', subj_id, subj_params)
+    
+    # establish a pseudorandom array of when to switch from reg to mismatch
+    # flow and back    
+    flipdirecarray = flipdirecorder(square_params['seg_len'], 
+                                  square_params['reg_len'], 
+                                  square_params['surp_len'], 
+                                  square_params['set_len'],
+                                  subj_params['set_order'])
+    
+    
+    # create file name to save parameters for subject and session
+    if subj_id is not None:    
+        save_session_config('sq', subj_id, sess_id, subj_params)
+    
+    fixPar={ # parameters set by ElementArrayStim
+            'units': square_params['units'],
+            'nElements': max(n_Squares), # initialize with max
+            'fieldShape': 'sqr',
+            'contrs': 1.0,
+            'elementTex': None,
+            'elementMask': None,
+            'name': 'bricks',
+            }
+    
+    sweepPar={ # parameters to sweep over (0 is outermost parameter)
+            'FlipDirecSize': (flipdirecarray, 0),
+            }
+    
+    # Create the stimulus array
+    squares = visual.ElementArrayStim(window, **fixPar)
+    
+    ourstimsq = OurStims(squares.win, squares, fieldsize, speed=speed,
+                         flipfrac=square_params['flipfrac'],
+                         currval=flipdirecarray[0])
+    
+    sq = Stimulus(ourstimsq,
+                  sweepPar,
+                  sweep_length=square_params['seg_len'], 
+                  start_time=0.0,
+                  blank_sweeps=square_params['set_len']/square_params['seg_len'], # blank sweep at the end of every set
+                  runs=1,
+                  shuffle=False,
+                  fps=square_params['fps'],
+                  )
+    
+    return sq
+
 def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
 
     # get fieldsize in units and deg_per_pix
@@ -230,7 +442,7 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     
     # convert values to pixels if necessary
     if gabor_params['units'] == 'pix':
-        size_ran = [x/deg_per_pix for x in gabor_params['size_ran']]
+        size_ran = [np.around(x/deg_per_pix) for x in gabor_params['size_ran']]
         sf = gabor_params['sf']*deg_per_pix
     else:
         size_ran = gabor_params['size_ran']
@@ -239,23 +451,15 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     # size is set as where gauss std=3 on each side (so size=6 std). 
     # Convert from full-width half-max
     gabor_modif = 6/2*np.sqrt(2*np.log(2))
-    size_ran = [np.around(x * gabor_modif, decimals=2) for x in size_ran]
+    size_ran = [np.around(x * gabor_modif) for x in size_ran]
     
     # parameter loading and recording steps are only done if a subj_id
     # is passed.
     # find whether parameters have been saved for this animal
     if subj_id is not None:
-        config_root = '.\config'
-        config_name = 'gab_subj{}_config.pkl'.format(subj_id)
-        config_file = os.path.join(config_root, config_name)
+        subj_params = load_config('gab', subj_id)
     
-    # if they exist, retrieve the parameters specific to the subject.
-    # otherwise, create them
-    if subj_id is not None and os.path.exists(config_file):
-        with open(config_file, 'r') as f:
-            subj_params = pkl.load(f)
-            print('Existing subject config used: {}.'.format(config_file))
-    else:
+    if subj_id is None or subj_params is None:
         subj_params = {}
         # get positions and sizes for each image (A, B, C, D, E)
         subj_params['possize'] = possizearrays(size_ran, 
@@ -266,11 +470,9 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
         # get shuffled kappas: approximately 1/std**2 where std is in radians
         subj_params['kaps'] = setkaps(gabor_params['ori_std'])
         if subj_id is not None:
-            with open(config_file, 'w') as f:
-                pkl.dump(subj_params, f)
-                print('New subject config saved under: {}'.format(config_file))
+            save_config('gab', subj_id, subj_params)
     
-    # establish a pseudorandom order or orientations to cycle through
+    # establish a pseudorandom order of orientations to cycle through
     # (surprise and current kappa integrated as well)    
     oriparsurps = oriparsurporder(gabor_params['oris'], 
                                   gabor_params['n_im'], 
@@ -280,27 +482,12 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
                                   subj_params['kaps'], 
                                   gabor_params['kap_len'])
     
+    subj_params['windowpar'] = [fieldsize, deg_per_pix]
+    subj_params['oriparsurps'] = oriparsurps   
+    
     # create file name to save parameters for subject and session
     if subj_id is not None:    
-        all_config_name = 'gab_subj{}_sess{}_config'.format(subj_id, sess_id)
-        all_config_ext = '.pkl'
-        all_config_file = os.path.join(config_root, all_config_name + all_config_ext)
-        
-        # save the parameters for this subject and session
-        subj_params['windowpar'] = [fieldsize, deg_per_pix]
-        subj_params['oriparsurps'] = oriparsurps
-        if os.path.exists(all_config_file):
-            i = 0
-            all_config = '{}_{}{}'.format(all_config_name, i, all_config_ext)
-            all_config_file = os.path.join(config_root, all_config)
-            while os.path.exists(all_config_file):
-               i +=1
-               all_config = '{}_{}{}'.format(all_config_name, i, all_config_ext)
-               all_config_file = os.path.join(config_root, all_config)
-        
-        with open(all_config_file, 'w') as f:
-            pkl.dump(subj_params, f)
-            print('Session parameters saved under: {}'.format(all_config_file))
+        save_session_config('gab', subj_id, sess_id, subj_params)
             
     fixPar={ # parameters set by ElementArrayStim
             'units': gabor_params['units'],
@@ -314,7 +501,7 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
             }
     
     sweepPar={ # parameters to sweep over (0 is outermost parameter)
-            'OriParSurp': (oriparsurps[0], 0), # contains (ori in degrees, surp=0 or 1, kappa)
+            'OriParSurp': (oriparsurps, 0), # contains (ori in degrees, surp=0 or 1, kappa)
             'PosSizesAll': ([0, 1, 2, 3], 1), # pass sets of positions and sizes
             }
     

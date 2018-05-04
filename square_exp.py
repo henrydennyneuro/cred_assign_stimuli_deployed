@@ -1,8 +1,8 @@
 # -*- coding: cp1252 -*-
 """
-This is code to generate and run the gabor stimuli.
+This is code to generate and run the brick stimuli.
 
-Currently it is set to run a 34 min session.
+Currently it is set to run a 36 min session.
 
 """
 
@@ -55,11 +55,11 @@ if __name__ == "__main__":
                     warp=Warp.Spherical,
                     )
   
-    gb = stim_params.init_run_gabors(window, subj_id, sess_id)
+    sq = stim_params.init_run_squares(window, subj_id, sess_id)
     
         
     ss = SweepStim(window,
-                   stimuli=[gb],
+                   stimuli=[sq],
                    pre_blank_sec=1,
                    post_blank_sec=1,
                    params={},  # will be set by MPE to work on the rig
