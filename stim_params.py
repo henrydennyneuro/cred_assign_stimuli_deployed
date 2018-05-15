@@ -1,10 +1,9 @@
-from psychopy import visual
-
 import pickle as pkl
 import os
 import numpy as np
 import random
 import itertools
+import time
 
 from camstim import Stimulus
 from ourstimuli import OurStims
@@ -17,7 +16,7 @@ Parameters are set here.
 
 GABOR_PARAMS = {
                 ### PARAMETERS TO SET
-                'n_gabors': 100,
+                'n_gabors': 30,
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
@@ -30,6 +29,7 @@ GABOR_PARAMS = {
                 'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
                 'surp_len': [3, 6], # range of durations (sec) for seq of surprise sets
                 'kap_len': 17*60, # duration (sec) of each kappa setting
+                'sd': 3, # nbr of st dev (gauss) to edge of gabor (default is 6)
                 
                 ### Changing these will require tweaking downstream...
                 'units': 'pix', # avoid using deg, comes out wrong at least on my computer (scaling artifact? 1.7)
@@ -51,7 +51,7 @@ SQUARE_PARAMS = {
                 ### Changing these will require tweaking downstream...
                 'units': 'pix', # avoid using deg, comes out wrong at least on my computer (scaling artifact? 1.7)
                 
-                ## MAY CAUSE PROBLEMS. OTHER WAY TO GET THIS?
+                ## ASSUMES THIS IS THE ACTUAL FRAME RATE 
                 'fps': 60 # frames per sec, default is 60 in camstim
                 }
 
@@ -102,8 +102,10 @@ def sizearray(size_ran, n_elem, n_im):
     
     if len(size_ran) == 1:
         size_ran = [size_ran[0], size_ran[0]]
+        
+    sizes = np.random.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
     
-    return np.random.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
+    return np.around(sizes)
 
 def possizearrays(size_ran, fieldsize, n_elem, n_im):
     """Returns zip of list of pos and sizes for n_elem.
@@ -324,32 +326,40 @@ def save_config(stimtype, subj_id, subj_params):
         print('New subject config saved under: {}'.format(config_file))
 
     
-def save_session_config(stimtype, subj_id, sess_id, subj_params):
-    config_root = '.\config'
-    all_config_name = '{}_subj{}_sess{}_config'.format(stimtype, subj_id, sess_id)
-    all_config_ext = '.pkl'
-    all_config_file = os.path.join(config_root, all_config_name + all_config_ext)
+def save_session_params(stimtype, subj_id, sess_id, stim_params, subj_params):
+    params_root = '.\config'
+    time_info = {
+                'timestr': time.strftime("%Y%m%d-%H%M%S")
+                }
+    if subj_id is not None:
+        all_params_name = '{}_subj{}_sess{}_params'.format(stimtype, subj_id, sess_id)
+    else:
+        all_params_name = '{}_{}_params'.format(stimtype, time_info['timestr'])
+    all_params_ext = '.pkl'
+    all_params_file = os.path.join(params_root, all_params_name + all_params_ext)
     
-    # if config directory does not exist, create it
-    if not os.path.exists(config_root):
-        os.makedirs(config_root)
+    # if params directory does not exist, create it
+    if not os.path.exists(params_root):
+        os.makedirs(params_root)
     
     # save the parameters for this subject and session
-    if os.path.exists(all_config_file):
+    if os.path.exists(all_params_file):
         i = 0
-        all_config = '{}_{}{}'.format(all_config_name, i, all_config_ext)
-        all_config_file = os.path.join(config_root, all_config)
-        while os.path.exists(all_config_file):
+        all_params = '{}_{}{}'.format(all_params_name, i, all_params_ext)
+        all_params_file = os.path.join(params_root, all_params)
+        while os.path.exists(all_params_file):
            i +=1
-           all_config = '{}_{}{}'.format(all_config_name, i, all_config_ext)
-           all_config_file = os.path.join(config_root, all_config)
+           all_params = '{}_{}{}'.format(all_params_name, i, all_params_ext)
+           all_params_file = os.path.join(params_root, all_params)
     
-    with open(all_config_file, 'w') as f:
+    with open(all_params_file, 'w') as f:
+        pkl.dump(time_info, f)
+        pkl.dump(stim_params, f)
         pkl.dump(subj_params, f)
-        print('Session parameters saved under: {}'.format(all_config_file))
+        print('Session parameters saved under: {}'.format(all_params_file))
 
 
-def init_run_squares(window, subj_id, sess_id, square_params=SQUARE_PARAMS):
+def init_run_squares(window, subj_id, sess_id, extrasave, recordPos, square_params=SQUARE_PARAMS):
      # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, square_params['units'])
     
@@ -362,7 +372,10 @@ def init_run_squares(window, subj_id, sess_id, square_params=SQUARE_PARAMS):
         speed = square_params['speed']
     
     # convert speed for units/s to units/frame
-    speed = np.around(speed/square_params['fps'], decimals=4)
+    speed = speed/square_params['fps']
+    
+    # to get actual frame rate
+    act_fps = window.getMsPerFrame() # returns average, std, median
     
     # calculate number of squares for each square size
     area = fieldsize[0]*fieldsize[1]
@@ -398,11 +411,11 @@ def init_run_squares(window, subj_id, sess_id, square_params=SQUARE_PARAMS):
                                   subj_params['set_order'])
     
     
-    # create file name to save parameters for subject and session
-    if subj_id is not None:    
-        save_session_config('sq', subj_id, sess_id, subj_params)
+    # save parameters for subject and session under ./config
+    if extrasave:
+        save_session_params('sq', subj_id, sess_id, square_params, subj_params)
     
-    fixPar={ # parameters set by ElementArrayStim
+    elemPar={ # parameters set by ElementArrayStim
             'units': square_params['units'],
             'nElements': max(n_Squares), # initialize with max
             'fieldShape': 'sqr',
@@ -416,26 +429,43 @@ def init_run_squares(window, subj_id, sess_id, square_params=SQUARE_PARAMS):
             'FlipDirecSize': (flipdirecarray, 0),
             }
     
-    # Create the stimulus array
-    squares = visual.ElementArrayStim(window, **fixPar)
+    # calculate total number of frames 
+    totframeslog = square_params['set_len']/square_params['seg_len'] * \
+                square_params['fps'] * len(subj_params['set_order'])
     
-    ourstimsq = OurStims(squares.win, squares, fieldsize, speed=speed,
+    
+    # Create the stimulus array
+    squares = OurStims(window, elemPar, fieldsize, totframeslog, speed=speed,
                          flipfrac=square_params['flipfrac'],
                          currval=flipdirecarray[0])
     
-    sq = Stimulus(ourstimsq,
+    # Add these attributes for the logs
+    squares.square_params = square_params
+    squares.subj_params = subj_params
+    squares.actual_fps = act_fps
+    
+    sq = Stimulus(squares,
                   sweepPar,
                   sweep_length=square_params['seg_len'], 
                   start_time=0.0,
-                  blank_sweeps=square_params['set_len']/square_params['seg_len'], # blank sweep at the end of every set
+                  blank_sweeps=square_params['set_len']/square_params['seg_len'],
                   runs=1,
                   shuffle=False,
-                  fps=square_params['fps'],
                   )
+    
+    # record attributes from OurStims
+    attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'square_params',
+               'initScr', 'possizes', 'autoLog', 'units','actual_fps', 
+               'subj_params', 'last_frame']
+    
+    if recordPos:
+        attribs.extend(['posByFrameCut']) # potentially large array
+    
+    sq.stimParams = {key:sq.stim.__dict__[key] for key in attribs}
     
     return sq
 
-def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
+def init_run_gabors(window, subj_id, sess_id, extrasave, recordOris, gabor_params=GABOR_PARAMS):
 
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, gabor_params['units'])
@@ -450,7 +480,7 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
     
     # size is set as where gauss std=3 on each side (so size=6 std). 
     # Convert from full-width half-max
-    gabor_modif = 6/2*np.sqrt(2*np.log(2))
+    gabor_modif = 1.0/(2*np.sqrt(2*np.log(2))) * gabor_params['sd']
     size_ran = [np.around(x * gabor_modif) for x in size_ran]
     
     # parameter loading and recording steps are only done if a subj_id
@@ -482,21 +512,27 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
                                   subj_params['kaps'], 
                                   gabor_params['kap_len'])
     
+    # calculate total number of frames 
+    totframeslog = len(oriparsurps) * gabor_params['n_im']
+    
     subj_params['windowpar'] = [fieldsize, deg_per_pix]
     subj_params['oriparsurps'] = oriparsurps   
     
-    # create file name to save parameters for subject and session
-    if subj_id is not None:    
-        save_session_config('gab', subj_id, sess_id, subj_params)
+    # save parameters for subject and session under ./config
+    if extrasave:
+        save_session_params('gab', subj_id, sess_id, gabor_params, subj_params)
             
-    fixPar={ # parameters set by ElementArrayStim
+    elemPar={ # parameters set by ElementArrayStim
             'units': gabor_params['units'],
             'nElements': gabor_params['n_gabors'], # number of stimuli on screen
             'fieldShape': 'sqr',
             'contrs': 1.0,
             'phases': gabor_params['phase'],
+            'sfs': sf,
             'elementTex': 'sin',
             'elementMask': 'gauss',
+            'texRes': 48,
+            'maskParams': {'sd': gabor_params['sd']},
             'name': 'gabors',
             }
     
@@ -505,20 +541,31 @@ def init_run_gabors(window, subj_id, sess_id, gabor_params=GABOR_PARAMS):
             'PosSizesAll': ([0, 1, 2, 3], 1), # pass sets of positions and sizes
             }
     
-    # Create the stimulus array
-    gabors = visual.ElementArrayStim(window, **fixPar)
-    
-    ourstimgab = OurStims(gabors.win, gabors, fieldsize, sf=sf, 
+    # Create the stimulus array 
+    gabors = OurStims(window, elemPar, fieldsize, totframeslog,
                           possizes=subj_params['possize'])
     
-    gb = Stimulus(ourstimgab,
+    # Add these attributes for the logs
+    gabors.gabor_params = gabor_params
+    gabors.subj_params = subj_params
+    
+    gb = Stimulus(gabors,
                   sweepPar,
                   sweep_length=gabor_params['im_len'], 
                   blank_sweeps=gabor_params['n_im'], # present a blank screen after every set of images
                   start_time=0.0,
                   runs=1,
                   shuffle=False,
-                  fps=60, # frames per sec, default is 60 in camstim
                   )
+    
+    # record attributes from OurStims
+    attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'gabor_params',
+               'initScr', 'possizes', 'autoLog', 'units', 'subj_params', 
+               'last_frame']
+    
+    if recordOris:
+        attribs.extend(['orisBySweepCut']) # potentially large array
+    
+    gb.stimParams = {key:gb.stim.__dict__[key] for key in attribs}
     
     return gb

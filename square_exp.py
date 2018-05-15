@@ -24,7 +24,12 @@ if __name__ == "__main__":
     
     # load and record parameters. Leave False.
     promptID = False
-            
+    # Save an extra copy of parameters under ./config
+    extrasave = False
+    
+    # Record positions of squares at all times (LEAVE AS TRUE)
+    recordPos = True
+    
     # create a monitor
     monitor = monitors.Monitor("testMonitor", distance=dist, width=wid)
 
@@ -42,9 +47,8 @@ if __name__ == "__main__":
         if subj_id is None or sess_id is None:
             raise ValueError('No Subject and/or Session ID entered.')
     
-    else: # Could also just enter it here
-        # if subj_id is left as None, will skip loading subj config, and 
-        # recording session config
+    else: # Could also just enter it here.
+        # if subj_id is left as None, will skip loading subj config
         subj_id = None
         sess_id = None
     
@@ -55,8 +59,7 @@ if __name__ == "__main__":
                     warp=Warp.Spherical,
                     )
   
-    sq = stim_params.init_run_squares(window, subj_id, sess_id)
-    
+    sq = stim_params.init_run_squares(window, subj_id, sess_id, extrasave, recordPos)
         
     ss = SweepStim(window,
                    stimuli=[sq],

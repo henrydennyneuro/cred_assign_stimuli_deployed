@@ -5,7 +5,7 @@ Created on Tue Apr 24 03:35:50 2018
 @author: lyra7
 """
 
-from psychopy import event, logging
+from psychopy import event, logging, core
 from psychopy.visual import ElementArrayStim
 from psychopy.tools.arraytools import val2array
 from psychopy.tools.attributetools import attributeSetter, setAttribute
@@ -20,107 +20,125 @@ class OurStims(ElementArrayStim):
 
     def __init__(self,
                  win,
-                 elemarr,
+                 elemParams,
                  fieldSize, # [wid, hei]
-                 units='pix',
+                 totframeslog, # number of frames to log (all for squares, only orientation changes for gabors)
                  direc=0.0, # only supports a single value. Use speed to flip direction of some elements.
                  speed=0.0, # units are sort of arbitrary for now
                  sizeparams=None, # range from which to sample uniformly [min, max]. Height and width sampled separately from same range.
                  possizes=None, # zipped lists of pos and sizes (each same size as nStims) for A, B, C, D, E
-                 sf=None, # if spatial freq is specific in cycles/pix (as elementarray does not use this)
                  cyc=None, # number of cycles visible (for Gabors)
                  newpos=[], # frames at which to reinitialize stimulus positions
                  newori=[0], # frames at which to change stimulus orientations (always include 0)
                  orimus=[0.0], # parameter (mu) to use when setting/changing stimulus orientations in deg
-                 orikappa=0, # dispersion for sampling orientations (radians)
+                 orikappa=None, # dispersion for sampling orientations (radians)
                  flipdirec=[], # intervals during which to flip direction [start, end (optional)]S
                  flipfrac=0.0, # fraction of elements that should be flipped (0 to 1)
-                 duration=-1, # duration in frames (-1 for no end)
+                 duration=-1, # duration in seconds (-1 for no end)
                  currval=None, # pass some values for the first initialization (from flipdirecarray)
                  initScr=True, # initialize elements on the screen
                  fps=60, # frames per second
-                 contrast=1.0,
-                 name='',
                  autoLog=None):
     
             #what local vars are defined (these are the init params) for use by __repr__
             self._initParams = __builtins__['dir']()
             self._initParams.remove('self')
             
-            self.elemarr = elemarr
-            self.nStims = self.elemarr.nElements
+            super(OurStims, self).__init__(win, autoLog=False, **elemParams) #set autoLog at end of init
             
-            super(OurStims, self).__init__(win, units=units, name=name, autoLog=False)#set autoLog at end of init
+            self._printed = False # useful for printing things once     
+            self._needupdate = True # used to initiate any new draws
             
-            self.suppress = 0 # number of elements to suppress (keep out of field)
+            self.elemParams = elemParams
             
-            self.elemarr.setContrs(contrast)
+            self._suppress = 0 # number of elements to suppress (keep out of field)
             
-            self.elemarr.setFieldSize(fieldSize)
-            self.units = units
+            self.setFieldSize(fieldSize)
             self.init_wid = fieldSize[0] * 1.1 # add a little buffer
             self.init_hei = fieldSize[1] * 1.1 # add a little buffer
             
             self.possizes = possizes
             
             if currval is not None:
-                self.elemarr.setSizes(currval[1])
-                self.currsize = currval[1]
-                self.suppress = self.nStims - currval[2]
+                self.setSizes(currval[1])
+                self._currsize = currval[1]
+                self._suppress = self.nElements - currval[2]
                 direc = currval[3]
-                self.currdirec = currval[3]
+                self._currdirec = currval[3]
             else:
-                self.currsize = None
-                self.currdirec = None
-                self.suppress = 0
+                self._currsize = None
+                self._currdirec = None
+                self._suppress = 0
 
-            self.sizeparams = sizeparams
-            if self.sizeparams is not None:
-                self.sizeparams = val2array(sizeparams) #if single value, returns it twice
-                self._initSizes(self.nStims)
+            self._sizeparams = sizeparams
+            if self._sizeparams is not None:
+                self._sizeparams = val2array(sizeparams) #if single value, returns it twice
+                self._initSizes(self.nElements)
                 
-            self.cyc = cyc      
-            self.sf = sf
+            self._cyc = cyc
             
-            if self.sf is not None and self.units == 'deg':
-                self.elemarr.setSfs(self.sf)
+            if 'sfs' in self.elemParams:
+                self.sf = self.elemParams['sfs']
+            else:
+                self.sf = None
             
             self.setDirec(direc)
             self._stimOriginVar()
             if len(newpos) != 0: # get frames from sec
                 newpos = [x * float(fps) for x in newpos]
-            self.newpos = newpos
+            self._newpos = newpos
             
-            self.flip=0
+            self._flip=0
             self.defaultspeed = speed
-            self.speed = np.ones(self.nStims)*speed
-            self.flipdirec = flipdirec
-            self.randel = None
+            self._speed = np.ones(self.nElements)*speed
+            self._flipdirec = flipdirec
+            self._randel = None
             self.flipfrac = float(flipfrac)
             self.flipstart = list()
             self.flipend = list()
-            if len(self.flipdirec) != 0: # get frames from sec
-                self.flipdirec = [[y * float(fps) for y in x] for x in self.flipdirec]
+            if len(self._flipdirec) != 0: # get frames from sec
+                self._flipdirec = [[y * float(fps) for y in x] for x in self._flipdirec]
                 self._initFlipDirec()
             
-            self.newori = [x * float(fps) for x in newori] # get frames from sec
-            self.orimus = orimus
-            self.orimu = self.orimus[0]
-            self.orikappa = orikappa
+            self._newori = [x * float(fps) for x in newori] # get frames from sec
+            self._orimus = orimus
+            self._orimu = self._orimus[0]
+            self._orikappa = orikappa
             self._initOriArrays()
             
             self.duration = duration*float(fps)
             self.initScr = initScr
             
-            self.countframes = 0
-            self.printed = False # useful for printing things once
+            self._countframes = 0
+            self.last_frame = [self._countframes] # workaround so the final value can be logged
             
-            self._newStimsXY(self.nStims) # update self.coords
-            if self.suppress != 0: # update in case suppression is required
-                self._suppressExtraStims()
-  
-            self.elemarr.setXYs(self.coords)
-    
+            self.starttime = core.getTime()
+            
+            if self.defaultspeed != 0.0:
+                # initialize array to compile pos_x, pos_y by frame (as int16)
+                totframesbuff = int(np.ceil(totframeslog*1.5)) # added a buffer in totframes in case fps is off a bit
+                self.posByFrame = np.empty((totframesbuff, self.nElements, 2), dtype=np.int16)
+                self.posByFrameCut = [self.posByFrame[0:1, :, :]]
+            else: # assuming if no speed, that it is gabors!
+                # initialize array to compile orientations at every change (as int16)
+                self.orisBySweep = np.empty((totframeslog, self.nElements), dtype=np.int16)
+                self.orisBySweepCut = [self.orisBySweep[0:1, :]]
+                self._countsweeps = -1
+                
+            
+            if possizes is None:
+                self._newStimsXY(self.nElements) # update self._coords
+                # start recording positions
+                
+                if self._suppress != 0: # update in case suppression is required
+                    self._suppressExtraStims()
+                self.setXYs(self._coords)
+            
+            else: 
+                self.setXYs(possizes[0][0])
+                self.setSizes(possizes[0][1])
+                self._adjustSF(possizes[0][1])
+            
             # set autoLog now that params have been initialised
             self.__dict__['autoLog'] = autoLog or autoLog is None and self.win.autoLog
             if self.autoLog:
@@ -129,7 +147,8 @@ class OurStims(ElementArrayStim):
     def setContrast(self, contrast, operation='', log=None):
         """Usually you can use 'stim.attribute = value' syntax instead,
         but use this method if you need to suppress the log message."""
-        self.elemarr.setContrs(contrast, operation, log)
+        self.setContrs(contrast, operation, log)
+        self._needupdate = True
     
     def setDirec(self, direc):
         if direc == 'left':
@@ -144,7 +163,7 @@ class OurStims(ElementArrayStim):
         direc = direc%360.0
         if direc < 0:
             direc = 360 - direc
-        self.direc = direc
+        self._direc = direc
 
 
     def setFlipDirecSize(self, flipdirecarray, operation='', log=None):
@@ -153,27 +172,27 @@ class OurStims(ElementArrayStim):
         """
         # check if switching from reg to mismatch or back, and if so initiate
         # speed update
-        if self.flip == 1 and flipdirecarray[0] == 0:
-            self.flip=0
-            self._update_stim_speed(self.flip)
-        elif self.flip == 0 and flipdirecarray[0] == 1:
-            self.flip=1
-            self._update_stim_speed(self.flip)
+        if self._flip == 1 and flipdirecarray[0] == 0:
+            self._flip=0
+            self._update_stim_speed(self._flip)
+        elif self._flip == 0 and flipdirecarray[0] == 1:
+            self._flip=1
+            self._update_stim_speed(self._flip)
         
         newInit = False
         # if new size (and number), change size (and number) and request reinitialization
-        if self.currsize != flipdirecarray[1]:
-            self.currsize = flipdirecarray[1]
-            self.elemarr.setSizes(flipdirecarray[1])
-            if self.flipdirecarray[2] < self.nStims: # suppress stims?
-                self.suppress = self.nStims - self.flipdirecarray[2]
-            elif self.flipdirecarray[2] == self.nStims:
-                self.suppress = 0
+        if self._currsize != flipdirecarray[1]:
+            self._currsize = flipdirecarray[1]
+            self.setSizes(flipdirecarray[1])
+            if flipdirecarray[2] < self.nElements: # suppress stims?
+                self._suppress = self.nElements - flipdirecarray[2]
+            elif flipdirecarray[2] == self.nElements:
+                self._suppress = 0
             newInit = True
         
         # if new direction, change direction and request reinitialization
-        if self.currdirec != flipdirecarray[3]:
-            self.currdirec = flipdirecarray[3]
+        if self._currdirec != flipdirecarray[3]:
+            self._currdirec = flipdirecarray[3]
             self.setDirec(flipdirecarray[3])
             self._stimOriginVar()
             newInit = True
@@ -181,33 +200,35 @@ class OurStims(ElementArrayStim):
         # reinitialize
         if newInit is True:
             self.initScr = True
-            self._newStimsXY(self.nStims) # updates self.coords
-            if self.suppress != 0: # update in case suppression is required
+            self._newStimsXY(self.nElements) # updates self._coords
+            if self._suppress != 0: # update in case suppression is required
                 self._suppressExtraStims()
-            self.elemarr.setXYs(self.coords)
+            self.setXYs(self._coords)
             newInit = False
     
     def _suppressExtraStims(self):
-        self.coords[self.nStims-self.suppress:,0] = -self.init_wid/2-self.buff/2
-        self.coords[self.nStims-self.suppress:,1] = -self.init_hei/2-self.buff/2
+        self._coords[self.nElements-self._suppress:,0] = -self.init_wid/2-self._buff/2
+        self._coords[self.nElements-self._suppress:,1] = -self.init_hei/2-self._buff/2
     
     def setOriParSurp(self, oriparsurp, operation='', log=None):
         """Not used internally, but just to allow new sets of orientations to 
         be initialized based on a new mu, new kappa and set whether the 4th set 
         is a surprise (90 deg shift and E locations and sizes).
         """
+        self._countsweeps += 1
         
-        self.orimu = oriparsurp[0] # set orientation mu (deg)
-        self.orikappa = oriparsurp[1] # set orientation kappa (rad)
+        self._orimu = oriparsurp[0] # set orientation mu (deg)
+        self._orikappa = oriparsurp[1] # set orientation kappa (rad)
         
-        # check if surprise set
-        if oriparsurp[2] == 0: 
-            self.surp = 0
-        elif oriparsurp[2] == 1:
-            self.surp = 1
+        # set if surprise set
+        self._surp = oriparsurp[2]
         
         # set orientations
         self.setOriParams(operation, log)
+
+        # compile orientations at every sweep (as int16)
+        self.orisBySweep[self._countsweeps, :] = np.around(self.oris).astype(np.int16)
+        self.orisBySweepCut[0] = self.orisBySweep[0:self._countsweeps + 1, :]
         
         
     def setOriKappa(self, ori_kappa, operation='', log=None):
@@ -215,45 +236,45 @@ class OurStims(ElementArrayStim):
         be initialized based on a new mu.
         """
         # update current kappa
-        self.orikappa = ori_kappa
+        self._orikappa = ori_kappa
         
         # set orientations
         self.setOriParams(operation, log)
     
     def setOriParams(self, operation='', log=None):
-        """Not used internally, but just to allow new sets of orientations to 
-        be initialized based on parameters using sweeps.
-        No need to pass anything as long as self.orimy and self.orikappa are updated.
+        """Initialize new sets of orientations based on parameters using sweeps.
+        No need to pass anything as long as self._orimu and self._orikappa are up to date.
         """
-        if self.orikappa == 0: # no dispersion
-            ori_array = np.ones(self.nStims)*self.orimu
+        if self._orikappa is None: # no dispersion
+            ori_array = self._orimu
         else:
-            # takes radians
-            ori_array_rad = np.random.vonmises(np.deg2rad(self.orimu), self.orikappa, self.nStims)
+            ori_array_rad = np.random.vonmises(np.deg2rad(self._orimu), self._orikappa, self.nElements)
             ori_array = np.rad2deg(ori_array_rad)
         
-        self.elemarr.setOris(ori_array, operation, log)
+        self.setOris(ori_array, operation, log)
+        self._needupdate = True
     
     def setSizesAll(self, sizes, operation='', log=None):
         """Set new sizes.
         Pass list (same size as nStims)
         """
         
-        self.elemarr.setSizes(sizes, operation, log)
-        self.adjustSF(sizes)
+        self.setSizes(sizes, operation, log)
+        self._adjustSF(sizes)
+        self._needupdate = True
     
-    def adjustSF(self, sizes):
+    def _adjustSF(self, sizes):
         # update spatial frequency to fit with set nbr of visible cycles
+                
+        if self._cyc is not None:
+            sfs = self._cyc/sizes
+            self.setSfs(sfs)
         
-        if self.cyc is not None:
-            sfs = self.cyc/sizes
-            self.elemarr.setSfs(sfs)
-        
-        # if units are pixels and sf is provided, update spatial frequency 
-        # cyc/stim_wid (which is what elementarray expects)
+        # if units are pixels, assume sf was provided to elementarray as cyc/pix, 
+        # update spatial frequency cyc/stim_wid (which is what elementarray expects)
         if self.sf is not None and self.units == 'pix':
             sfs = [self.sf * x for x in sizes]
-            self.elemarr.setSfs(sfs)
+            self.setSfs(sfs)
             
             
     def setSizeParams(self, size_params, operation='', log=None):
@@ -265,96 +286,97 @@ class OurStims(ElementArrayStim):
             e = 'Too many parameters: ' + str(size_params.size)
             raise ValueError(e)
         elif size_params[0] == size_params[1]: # originally single value, no range
-            sizes = np.ones(self.nStims)*size_params[0]
-        elif self.sizeparams.size == 2:
+            sizes = np.ones(self.nElements)*size_params[0]
+        elif self._sizeparams.size == 2:
             # sample uniformly from range
-            sizes = np.random.uniform(size_params[0], size_params[1], self.nStims)
+            sizes = np.random.uniform(size_params[0], size_params[1], self.nElements)
             # use instead if want to initialize width and height independently
-#            size_w = np.random.uniform(size_params[0], size_params[1], self.nStims)
-#            size_h = np.random.uniform(size_params[0], size_params[1], self.nStims)
+#            size_w = np.random.uniform(size_params[0], size_params[1], self.nElements)
+#            size_h = np.random.uniform(size_params[0], size_params[1], self.nElements)
 #            sizes = zip(size_w, size_h)
         
-        self.elemarr.setSizes(sizes, operation, log)
-        self.adjustSF(sizes)       
+        self.setSizes(sizes, operation, log)
+        self._adjustSF(sizes)
+        self._needupdate = True
                 
     def setPosAll(self, pos, operation='', log=None):
         """Set new positions.
         Pass list (same size as nStims)
         """
         
-        self.elemarr.setXYs(pos, operation, log)
+        self.setXYs(pos, operation, log)
+        self._needupdate = True
     
     def setPosSizesAll(self, combo, operation='', log=None):
         """Allows Sweeps to set which pos/size combo to use where
         0, 1, 2, 3 = A, B, C, D.
-        4 is set manually below
+        4 is set manually below (E)
         """
-        pos = self.possizes[combo][0]
-        sizes = self.possizes[combo][1]
         
-        self.elemarr.setXYs(pos, operation, log)
-        self.elemarr.setSizes(sizes, operation, log)
-        self.adjustSF(sizes)
-        
-        # if it's the D (3rd set) of a surprise round, switch orientation mu
+        # if it's the D (4th set) of a surprise round, switch orientation mu
         # and switch positions to E
         # note: this is done here because the sweep visits the highest level param last
-        if self.surp == 1 and combo == 3:
+        if self._surp == 1 and combo == 3:
             pos = self.possizes[4][0]
-            size = self.possizes[4][1]
-            self.elemarr.setXYs(pos, operation, log)
-            self.elemarr.setSizes(size, operation, log)
-            self.adjustSF(size)
-            self.orimu = (self.orimu + 90)%360
-            self.countsets = 0
+            sizes = self.possizes[4][1]
+            self._orimu = (self._orimu + 90)%360
         
+        else:
+            pos = self.possizes[combo][0]
+            sizes = self.possizes[combo][1]
+        
+        self.setXYs(pos, operation, log)
+        self.setSizes(sizes, operation, log)
+        self._adjustSF(sizes)
+    
         # resample orientations each time new positions and sizes are set
         self.setOriParams(operation, log)
+        self._needupdate = True
     
-    def _check_keys(self):
-        for keys in event.getKeys(timeStamped=True):
-            if keys[0]in ['escape', 'q']:
-                self.escape_pressed = True
-                self.win.close()
+#    def _check_keys(self):
+#        for keys in event.getKeys(timeStamped=True):
+#            if keys[0]in ['escape', 'q']:
+#                self._escape_pressed = True
+#                self.win.close()
     
     def _stimOriginVar(self):
         """Get variables relevant to determining where to initialize stimuli
         """
-        self.dirRad = self.direc*np.pi/180.0
+        self._dirRad = self._direc*np.pi/180.0
         
         # set values to calculate new stim origins
-        quad = int(self.direc/90.0)%4
+        quad = int(self._direc/90.0)%4
         if quad == 0:
-            self.buffsign = np.array([1, 1])
+            self._buffsign = np.array([1, 1])
         elif quad == 1:
-            self.buffsign = np.array([-1, 1])
+            self._buffsign = np.array([-1, 1])
         elif quad == 2:
-            self.buffsign = np.array([-1, -1])
+            self._buffsign = np.array([-1, -1])
         elif quad == 3:
-            self.buffsign = np.array([1, -1])
+            self._buffsign = np.array([1, -1])
         basedirRad = np.arctan(1.0*self.init_hei/self.init_wid)
-        self.buff = (self.init_wid+self.init_hei)/10 # size of initialization area (10 is arbitrary)
+        self._buff = (self.init_wid+self.init_hei)/10 # size of initialization area (10 is arbitrary)
         
-        if self.direc%90.0 != 0.0:
-            self.ratio = self.dirRad%(np.pi/2)/basedirRad
-            self.leng = self.init_wid*self.ratio + self.init_hei/self.ratio
+        if self._direc%90.0 != 0.0:
+            self._ratio = self._dirRad%(np.pi/2)/basedirRad
+            self._leng = self.init_wid*self._ratio + self.init_hei/self._ratio
         
         
     def _initFlipDirec(self):      
         self.flipstart = list()
         self.flipend = list()
         
-        for i, flip in enumerate(self.flipdirec):
+        for i, flip in enumerate(self._flipdirec):
             flip = val2array(flip) #if single value, returns it twice
             if flip.size > 2:
                 raise ValueError('Too many parameters.')
             else:
                 self.flipstart.append(flip[0])
             if flip[0] == flip[1]: # assume last end possible if same value (originally single value)
-                if i == len(self.flipdirec) - 1:
+                if i == len(self._flipdirec) - 1:
                     self.flipend.append(-1)
                 else:
-                    self.flipend.append(self.flipdirec[i+1][0] - 1)
+                    self.flipend.append(self._flipdirec[i+1][0] - 1)
             else:
                 self.flipend.append(flip[1])
         
@@ -362,51 +384,51 @@ class OurStims(ElementArrayStim):
         
         # initialize on screen (e.g., for first initialization)
         if self.initScr:
-            if self.speed[0] == 0.0: # initialize on screen
+            if self._speed[0] == 0.0: # initialize on screen
                 coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
                 coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
-                self.coords = np.concatenate((coords_wid, coords_hei), axis=1)
-                return self.coords
+                self._coords = np.concatenate((coords_wid, coords_hei), axis=1)
+                return self._coords
         
             else: # initialize on screen and in buffer areas
-                if self.direc%180.0 == 0.0: # I stim origin case:
-                    coords_wid = np.random.uniform(-self.init_wid/2-self.buff, self.init_wid/2+self.buff, newStims)[:, np.newaxis]
+                if self._direc%180.0 == 0.0: # I stim origin case:
+                    coords_wid = np.random.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
                     coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
-                elif self.direc%90.0 == 0.0:
+                elif self._direc%90.0 == 0.0:
                     coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
-                    coords_hei = np.random.uniform(-self.init_hei/2-self.buff, self.init_hei/2+self.buff, newStims)[:, np.newaxis]
+                    coords_hei = np.random.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
                 else:
-                    coords_wid = np.random.uniform(-self.init_wid/2-self.buff, self.init_wid/2+self.buff, newStims)[:, np.newaxis]
-                    coords_hei = np.random.uniform(-self.init_hei/2-self.buff, self.init_hei/2+self.buff, newStims)[:, np.newaxis]
-                self.coords = np.concatenate((coords_wid, coords_hei), axis=1)
+                    coords_wid = np.random.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
+                    coords_hei = np.random.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
+                self._coords = np.concatenate((coords_wid, coords_hei), axis=1)
                 self.initScr = False
-                return self.coords
+                return self._coords
         
         # subsequent initializations from L around window (or I if mult of 90)
-        elif self.speed[0] != 0.0:            
+        elif self._speed[0] != 0.0:            
             # initialize for buffer area
-            coords_buff = np.random.uniform(-self.buff, 0, newStims)[:, np.newaxis]
+            coords_buff = np.random.uniform(-self._buff, 0, newStims)[:, np.newaxis]
             
-            if self.direc%180.0 == 0.0: # I stim origin case
+            if self._direc%180.0 == 0.0: # I stim origin case
                 coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
-                coords = np.concatenate((self.buffsign[0]*(coords_buff - self.init_wid/2), coords_hei), axis=1)
-            elif self.direc%90.0 == 0.0: # flat I stim origin case
+                coords = np.concatenate((self._buffsign[0]*(coords_buff - self.init_wid/2), coords_hei), axis=1)
+            elif self._direc%90.0 == 0.0: # flat I stim origin case
                 coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
-                coords = np.concatenate((coords_wid, self.buffsign[1]*(coords_buff - self.init_hei/2)), axis=1)
+                coords = np.concatenate((coords_wid, self._buffsign[1]*(coords_buff - self.init_hei/2)), axis=1)
             else:
-                coords_main = np.random.uniform(-self.buff, self.leng, newStims)[:, np.newaxis]
+                coords_main = np.random.uniform(-self._buff, self._leng, newStims)[:, np.newaxis]
                 coords = np.concatenate((coords_main, coords_buff), axis=1)
                 for i, val in enumerate(coords):
-                    if val[0] > self.init_wid*self.ratio: # samples in the height area
-                        new_main = val[0] - self.init_wid*self.ratio # for val over wid -> hei
-                        coords[i][0] = (val[1] - self.init_wid/2)*self.buffsign[0] 
-                        coords[i][1] = new_main*self.ratio - self.init_hei/2
+                    if val[0] > self.init_wid*self._ratio: # samples in the height area
+                        new_main = val[0] - self.init_wid*self._ratio # for val over wid -> hei
+                        coords[i][0] = (val[1] - self.init_wid/2)*self._buffsign[0] 
+                        coords[i][1] = new_main*self._ratio - self.init_hei/2
                     elif val[0] < 0.1: # samples in the corner area
-                        coords[i][0] = (val[0] - self.init_wid/2)*self.buffsign[0]
-                        coords[i][1] = (val[1] - self.init_hei/2)*self.buffsign[1]
+                        coords[i][0] = (val[0] - self.init_wid/2)*self._buffsign[0]
+                        coords[i][1] = (val[1] - self.init_hei/2)*self._buffsign[1]
                     else: # samples in the width area
-                        coords[i][0] = val[0]*self.ratio - self.init_wid/2
-                        coords[i][1] = (val[1] - self.init_hei/2)*self.buffsign[1]
+                        coords[i][0] = val[0]*self._ratio - self.init_wid/2
+                        coords[i][1] = (val[1] - self.init_hei/2)*self._buffsign[1]
             return coords
         
         else:
@@ -419,94 +441,94 @@ class OurStims(ElementArrayStim):
     
         """Find out of bound stims, update positions, get new positions
         """
-        self.countframes += 1
         
-        dead = np.zeros(self.nStims, dtype=bool)
+        dead = np.zeros(self.nElements, dtype=bool)
     
         # stims that have exited the field
-        dead = dead+(np.abs(self.coords[:,0]) > (self.init_wid/2 + self.buff))
-        dead = dead+(np.abs(self.coords[:,1]) > (self.init_hei/2 + self.buff))
+        dead = dead+(np.abs(self._coords[:,0]) > (self.init_wid/2 + self._buff))
+        dead = dead+(np.abs(self._coords[:,1]) > (self.init_hei/2 + self._buff))
 
         # if there is speed flipping, update stimulus speeds to be flipped
-        if len(self.flipdirec) != 0:
+        if len(self._flipdirec) != 0:
             self._update_stim_speed()
         
-        if self.randel is not None and dead[self.randel].any():
+        if self._randel is not None and dead[self._randel].any():
             dead = self._revive_flipped_stim(dead)
         
         ##update XY based on speed and dir (except for those being suppressed)
-        self.coords[:self.nStims-self.suppress,0] += self.speed[:self.nStims-self.suppress]*np.cos(self.dirRad)
-        self.coords[:self.nStims-self.suppress,1] += self.speed[:self.nStims-self.suppress]*np.sin(self.dirRad)# 0 radians=East!
+        self._coords[:self.nElements-self._suppress,0] += self._speed[:self.nElements-self._suppress]*np.cos(self._dirRad)
+        self._coords[:self.nElements-self._suppress,1] += self._speed[:self.nElements-self._suppress]*np.sin(self._dirRad)# 0 radians=East!
         
         #update any dead stims
         if dead.any():
-            self.coords[dead,:] = self._newStimsXY(sum(dead))
+            self._coords[dead,:] = self._newStimsXY(sum(dead))
         
-        self.elemarr.setXYs(self.coords)
+        self.setXYs(self._coords)
 
     def _update_stim_speed(self, signal=None):        
         # flip speed (i.e., direction) if needed
-        if signal==1 or self.countframes in self.flipstart:
-            self.randel = np.where(np.random.rand(self.nStims-self.suppress) < self.flipfrac)[0]
-            self.speed[self.randel] = -self.defaultspeed
-            if self.randel.size == 0: # in case no elements are selected
-                self.randel = None
-        elif signal==0 or self.countframes in self.flipend:
-            if self.randel is not None:
-                self.speed[self.randel] = self.defaultspeed
-            self.randel = None
+        if signal==1 or self._countframes in self.flipstart:
+            self._randel = np.where(np.random.rand(self.nElements-self._suppress) < self.flipfrac)[0]
+            self._speed[self._randel] = -self.defaultspeed
+            if self._randel.size == 0: # in case no elements are selected
+                self._randel = None
+        elif signal==0 or self._countframes in self.flipend:
+            if self._randel is not None:
+                self._speed[self._randel] = self.defaultspeed
+            self._randel = None
     
     def _revive_flipped_stim(self, dead):
         # revive and flip direction on flipped stimuli out of bounds
-        self.speed[self.randel[np.where(dead[self.randel])[0]]] = self.defaultspeed
-        dead[self.randel]=False
+        self._speed[self._randel[np.where(dead[self._randel])[0]]] = self.defaultspeed
+        dead[self._randel]=False
         
         return dead
     
     def _update_stim_ori(self):
         # change orientations
-        self.elemarr.oris = self.oriarrays[self.newori.index(self.countframes)]
+        self.oris = self._oriarrays[self._newori.index(self._countframes)]
     
     def _update_stim_pos(self):
         # get new positions
         self.initScr = True
-        self.elemarr.setXYs(self._newStimsXY(self.nStims))
+        self.setXYs(self._newStimsXY(self.nElements))
     
     def _initOriArrays(self):
         """
         Initialize the list of arrays of orientations and set first orientations.
         """
-        if len(self.newori) != len(self.orimus):
+        if len(self._newori) != len(self._orimus):
             raise ValueError('Length of newori must match length of oriparamList.')
         
-        self.oriarrays = list()
-        for i in self.orimus:
-            if self.orikappa == 0.0: # no dispersion
-                self.oriarrays.append(np.ones(self.nStims)*i)
+        self._oriarrays = list()
+        for i in self._orimus:
+            if self._orikappa is None: # no dispersion
+                self._oriarrays.append(np.ones(self.nElements)*i)
             else:
-                neworisrad = np.random.vonmises(np.deg2rad(i), self.orikappa, self.nStims)
-                self.oriarrays.append(np.rad2deg(neworisrad))
+                neworisrad = np.random.vonmises(np.deg2rad(i), self._orikappa, self.nElements)
+                self._oriarrays.append(np.rad2deg(neworisrad))
         
-        self.elemarr.oris = self.oriarrays[0]
+        self.oris = self._oriarrays[0]
         
     def _initSizes(self, nStims):
         """
         Initialize the sizes uniformly from range (height and width same).
         """
           
-        if self.sizeparams.size > 2:
+        if self._sizeparams.size > 2:
             raise ValueError('Too many parameters.')
-        elif self.sizeparams[0] == self.sizeparams[1]: # assume last end possible if same value (originally single value)
-            sizes = np.ones(nStims)*self.sizeparams[0]
+        elif self._sizeparams[0] == self._sizeparams[1]: # assume last end possible if same value (originally single value)
+            sizes = np.ones(nStims)*self._sizeparams[0]
         else:
             # sample uniformly from range
-            sizes = np.random.uniform(self.sizeparams[0], self.sizeparams[1], nStims)
+            sizes = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
             # use instead if want to initialize width and height independently
-#            size_w = np.random.uniform(self.sizeparams[0], self.sizeparams[1], nStims)
-#            size_h = np.random.uniform(self.sizeparams[0], self.sizeparams[1], nStims)
+#            size_w = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
+#            size_h = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
 #            sizes = zip(size_w, size_h)
         
-        self.elemarr.sizes = sizes
+        self.sizes = sizes
+    
     
     def draw(self, win=None):
         """Draw the stimulus in its relevant window. You must call
@@ -516,25 +538,33 @@ class OurStims(ElementArrayStim):
         """
         
         # update if new positions (newpos)
-        if len(self.newpos) > 0 and self.countframes in self.newpos:
+        if len(self._newpos) > 0 and self._countframes in self._newpos:
             self._update_stim_pos()
         
         # update if new orientations (newori)
-        if len(self.newori) > 1 and self.countframes in self.newori[1:]:
+        if len(self._newori) > 1 and self._countframes in self._newori[1:]:
             self._update_stim_ori()
         
-        self.elemarr.draw()
+        # log current posx, posy (rounded to int16) if stim is moving
+        # shape is n_frames x n_elements x 2
+        if self.defaultspeed != 0.0:
+            self.posByFrame[self._countframes, :, :] = np.around(self._coords).astype(np.int16)
+            self.posByFrameCut[0] = self.posByFrame[0:self._countframes + 1, :, :]
+        
+        super(OurStims, self).draw()
         
         # check for end
 #        self._check_keys()
-#        if self.countframes == self.duration:
+#        if self._countframes == self.duration:
 #            self.win.close()
         
         # count frames
-        self.countframes += 1
+        self.last_frame[0] = self._countframes
+        self._countframes += 1
+        
         
         # update based on speed
-        if self.speed[0] != 0.0:
+        if self.defaultspeed != 0.0:
             self._update_stim_mov()
 
         
