@@ -16,7 +16,7 @@ Additional scripts:
 - stim_params.py - Initializes stimuli and their parameters.
 
 Log files:
-- Logs are saved in a pickled dictionary, and save location is printed at the end of a run.
+- Logs are saved in a pickled dictionary, and save location is under something like user/camstim/output.
 - Sweep parameters are under a few keys of ['stimuli'][0].
 - Stimulus parameters are in the following dictionary: ['stimuli'][0]['stimParams'].
 

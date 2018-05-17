@@ -22,7 +22,6 @@ class OurStims(ElementArrayStim):
                  win,
                  elemParams,
                  fieldSize, # [wid, hei]
-                 totframeslog, # number of frames to log (all for squares, only orientation changes for gabors)
                  direc=0.0, # only supports a single value. Use speed to flip direction of some elements.
                  speed=0.0, # units are sort of arbitrary for now
                  sizeparams=None, # range from which to sample uniformly [min, max]. Height and width sampled separately from same range.
@@ -110,20 +109,16 @@ class OurStims(ElementArrayStim):
             self.initScr = initScr
             
             self._countframes = 0
-            self.last_frame = [self._countframes] # workaround so the final value can be logged
+            self.last_frame = list([self._countframes]) # workaround so the final value can be logged
             
             self.starttime = core.getTime()
             
             if self.defaultspeed != 0.0:
-                # initialize array to compile pos_x, pos_y by frame (as int16)
-                totframesbuff = int(np.ceil(totframeslog*1.5)) # added a buffer in totframes in case fps is off a bit
-                self.posByFrame = np.empty((totframesbuff, self.nElements, 2), dtype=np.int16)
-                self.posByFrameCut = [self.posByFrame[0:1, :, :]]
+                # initialize list to compile pos_x, pos_y by frame (as int16)
+                self.posByFrame = list()
             else: # assuming if no speed, that it is gabors!
-                # initialize array to compile orientations at every change (as int16)
-                self.orisBySweep = np.empty((totframeslog, self.nElements), dtype=np.int16)
-                self.orisBySweepCut = [self.orisBySweep[0:1, :]]
-                self._countsweeps = -1
+                # initialize list to compile orientations at every change (as int16)
+                self.orisByImg = list()
                 
             
             if possizes is None:
@@ -215,7 +210,6 @@ class OurStims(ElementArrayStim):
         be initialized based on a new mu, new kappa and set whether the 4th set 
         is a surprise (90 deg shift and E locations and sizes).
         """
-        self._countsweeps += 1
         
         self._orimu = oriparsurp[0] # set orientation mu (deg)
         self._orikappa = oriparsurp[1] # set orientation kappa (rad)
@@ -227,8 +221,7 @@ class OurStims(ElementArrayStim):
         self.setOriParams(operation, log)
 
         # compile orientations at every sweep (as int16)
-        self.orisBySweep[self._countsweeps, :] = np.around(self.oris).astype(np.int16)
-        self.orisBySweepCut[0] = self.orisBySweep[0:self._countsweeps + 1, :]
+        self.orisByImg.extend([np.around(self.oris).astype(np.int16)])
         
         
     def setOriKappa(self, ori_kappa, operation='', log=None):
@@ -548,8 +541,7 @@ class OurStims(ElementArrayStim):
         # log current posx, posy (rounded to int16) if stim is moving
         # shape is n_frames x n_elements x 2
         if self.defaultspeed != 0.0:
-            self.posByFrame[self._countframes, :, :] = np.around(self._coords).astype(np.int16)
-            self.posByFrameCut[0] = self.posByFrame[0:self._countframes + 1, :, :]
+            self.posByFrame.extend([np.around(self._coords).astype(np.int16)])
         
         super(OurStims, self).draw()
         
@@ -559,7 +551,7 @@ class OurStims(ElementArrayStim):
 #            self.win.close()
         
         # count frames
-        self.last_frame[0] = self._countframes
+        self.last_frame[0] = [self._countframes]
         self._countframes += 1
         
         

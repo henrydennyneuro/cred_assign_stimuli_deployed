@@ -52,6 +52,10 @@ if __name__ == "__main__":
         subj_id = None
         sess_id = None
     
+    # alternatively to using animal ID, use a seed per animal.
+    # Note, animal ID will override seed IF there is a config file for the animal!
+    seed = None
+    
     # Create display window
     window = Window(fullscr=True, # Will return an error due to default size. Ignore.
                     monitor=monitor,  # Will be set to a gamma calibrated profile by MPE
@@ -59,7 +63,7 @@ if __name__ == "__main__":
                     warp=Warp.Spherical,
                     )
   
-    sq = stim_params.init_run_squares(window, subj_id, sess_id, extrasave, recordPos)
+    sq = stim_params.init_run_squares(window, subj_id, sess_id, seed, extrasave, recordPos)
         
     ss = SweepStim(window,
                    stimuli=[sq],
