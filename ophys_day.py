@@ -6,14 +6,15 @@ order is: gabors, bricks
 Mismatches are included. These are every 30-90 seconds, and last 2-4 seconds
 for the bricks, and 3-6 seconds for the Gabors
 
-Everything is randomized for each animal, except for: ordering of stim types (gabors vs bricks), and positions and sizes of Gabors
-Gabor positions and sizes are permanently hard-coded (same for all animals, forever)
-Stim type ordering is the same for all animals on a given day, but can vary between days
+Everything is randomized for each session for each animals (ordering of stim 
+types (gabors vs bricks), ordering of brick directions (left, right) positions 
+and sizes of Gabors
 """
 
 # FOR TESTING
-SESSION_PARAMS = {'type': 'ophys', # type of session (habituation or ophys)
-                  'session_dur': 85, # total session duration (sec)
+SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
+                                   # entering 'hab' will remove any surprises
+                  'session_dur': 117, # total session duration (sec)
                   'pre_blank': 5, # blank before stim starts (sec)
                   'post_blank': 5, # blank after all stims end (sec)
                   'inter_blank': 5, # blank between all stims (sec)
@@ -27,11 +28,13 @@ SESSION_PARAMS = {'type': 'ophys', # type of session (habituation or ophys)
 #                   'post_blank': 30, # blank after all stims end (sec)
 #                   'inter_blank': 30, # blank between all stims (sec)
 #                   'gab_dur': 34*60, # duration of gabor block (sec)
-#                   'sq_dur': 17*60, # duration of each brick block (total=2) (sec)
+#                   'sq_dur': 17*60, # duration of each brick block (total=2) 
+#                                      (sec)
 #                  }
 
 import random
 import sys
+import copy
 
 import numpy as np
 
@@ -59,12 +62,9 @@ if __name__ == "__main__":
     monitor = monitors.Monitor("testMonitor", distance=dist, width=wid)
     
     # randomly set a seed for the session and create a dictionary
-    seed = random.choice(range(0, 48000))
-    #seed = # override by manually setting seed
-    rng = np.random.RandomState(seed)
-
-    seed_info = {'seed': seed,
-                 'rng': rng}
+    SESSION_PARAMS['seed'] = random.choice(range(0, 48000))
+    SESSION_PARAMS['seed'] = 9201 # override by setting seed manually
+    SESSION_PARAMS['rng'] = np.random.RandomState(SESSION_PARAMS['seed'])
     
     # Create display window
     window = Window(fullscr=True, # Will return an error due to default size. Ignore.
@@ -82,15 +82,15 @@ if __name__ == "__main__":
               .format(SESSION_PARAMS['session_dur'], tot_calc))
 
     # initialize the stimuli
-    gb = stim_params.init_run_gabors(window, seed_info, SESSION_PARAMS, recordOris)
-    sq_left = stim_params.init_run_squares(window, seed_info, 'left', SESSION_PARAMS, recordPos)
-    sq_right = stim_params.init_run_squares(window, seed_info, 'right', SESSION_PARAMS, recordPos)
+    gb = stim_params.init_run_gabors(window, copy.deepcopy(SESSION_PARAMS), recordOris)
+    sq_left = stim_params.init_run_squares(window, 'left', copy.deepcopy(SESSION_PARAMS), recordPos)
+    sq_right = stim_params.init_run_squares(window, 'right', copy.deepcopy(SESSION_PARAMS), recordPos)
 
     # initialize display order and times
     stim_order = ['g', 'b']
-    seed_info['rng'].shuffle(stim_order) # in place shuffling
+    SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     sq_order = ['l', 'r']
-    seed_info['rng'].shuffle(sq_order) # in place shuffling
+    SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
 
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []

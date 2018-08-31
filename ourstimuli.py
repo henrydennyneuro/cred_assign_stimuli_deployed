@@ -36,6 +36,7 @@ class OurStims(ElementArrayStim):
                  duration=-1, # duration in seconds (-1 for no end)
                  currval=None, # pass some values for the first initialization (from fliparray)
                  initScr=True, # initialize elements on the screen
+                 rng=None,
                  fps=60, # frames per second
                  autoLog=None):
     
@@ -81,6 +82,7 @@ class OurStims(ElementArrayStim):
             self._speed = np.ones(self.nElements)*speed
             self._flipdirec = flipdirec
             self._randel = None
+            self.rng = rng
             self.flipfrac = float(flipfrac)
             self.flipstart = list()
             self.flipend = list()
@@ -203,7 +205,10 @@ class OurStims(ElementArrayStim):
         if self._orikappa is None: # no dispersion
             ori_array = self._orimu
         else:
-            ori_array_rad = np.random.vonmises(np.deg2rad(self._orimu), self._orikappa, self.nElements)
+            if self.rng is not None:
+                ori_array_rad = self.rng.vonmises(np.deg2rad(self._orimu), self._orikappa, self.nElements)
+            else:
+                ori_array_rad = np.random.vonmises(np.deg2rad(self._orimu), self._orikappa, self.nElements)
             ori_array = np.rad2deg(ori_array_rad)
         
         self.setOris(ori_array, operation, log)
@@ -244,7 +249,10 @@ class OurStims(ElementArrayStim):
             sizes = np.ones(self.nElements)*size_params[0]
         elif self._sizeparams.size == 2:
             # sample uniformly from range
-            sizes = np.random.uniform(size_params[0], size_params[1], self.nElements)
+            if self.rng is not None:
+                sizes = self.rng.uniform(size_params[0], size_params[1], self.nElements)
+            else:
+                sizes = np.random.uniform(size_params[0], size_params[1], self.nElements)
             # use instead if want to initialize width and height independently
 #            size_w = np.random.uniform(size_params[0], size_params[1], self.nElements)
 #            size_h = np.random.uniform(size_params[0], size_params[1], self.nElements)
@@ -340,21 +348,39 @@ class OurStims(ElementArrayStim):
         # initialize on screen (e.g., for first initialization)
         if self.initScr:
             if self._speed[0] == 0.0: # initialize on screen
-                coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
-                coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+                if self.rng is not None:
+                    coords_wid = self.rng.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                    coords_hei = self.rng.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+                else:
+                    coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                    coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+
                 self._coords = np.concatenate((coords_wid, coords_hei), axis=1)
                 return self._coords
         
             else: # initialize on screen and in buffer areas
                 if self._direc%180.0 == 0.0: # I stim origin case:
-                    coords_wid = np.random.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
-                    coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+                    if self.rng is not None:
+                        coords_wid = self.rng.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
+                        coords_hei = self.rng.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+                    else:
+                        coords_wid = np.random.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
+                        coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
                 elif self._direc%90.0 == 0.0:
-                    coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
-                    coords_hei = np.random.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
+                    if self.rng is not None:
+                        coords_wid = self.rng.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                        coords_hei = self.rng.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
+                    else:
+                        coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                        coords_hei = np.random.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
                 else:
-                    coords_wid = np.random.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
-                    coords_hei = np.random.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
+                    if self.rng is not None:
+                        coords_wid = self.rng.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
+                        coords_hei = self.rng.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
+                    else:
+                        coords_wid = np.random.uniform(-self.init_wid/2-self._buff, self.init_wid/2+self._buff, newStims)[:, np.newaxis]
+                        coords_hei = np.random.uniform(-self.init_hei/2-self._buff, self.init_hei/2+self._buff, newStims)[:, np.newaxis]
+
                 self._coords = np.concatenate((coords_wid, coords_hei), axis=1)
                 self.initScr = False
                 return self._coords
@@ -362,16 +388,28 @@ class OurStims(ElementArrayStim):
         # subsequent initializations from L around window (or I if mult of 90)
         elif self._speed[0] != 0.0:            
             # initialize for buffer area
-            coords_buff = np.random.uniform(-self._buff, 0, newStims)[:, np.newaxis]
+            if self.rng is not None:
+                coords_buff = self.rng.uniform(-self._buff, 0, newStims)[:, np.newaxis]
+            else:
+                coords_buff = np.random.uniform(-self._buff, 0, newStims)[:, np.newaxis]
             
             if self._direc%180.0 == 0.0: # I stim origin case
-                coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
+                if self.rng is not None:
+                    coords_hei = self.rng.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]            
+                else:
+                    coords_hei = np.random.uniform(-self.init_hei/2, self.init_hei/2, newStims)[:, np.newaxis]
                 coords = np.concatenate((self._buffsign[0]*(coords_buff - self.init_wid/2), coords_hei), axis=1)
             elif self._direc%90.0 == 0.0: # flat I stim origin case
-                coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                if self.rng is not None:
+                    coords_wid = self.rng.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
+                else:
+                    coords_wid = np.random.uniform(-self.init_wid/2, self.init_wid/2, newStims)[:, np.newaxis]
                 coords = np.concatenate((coords_wid, self._buffsign[1]*(coords_buff - self.init_hei/2)), axis=1)
             else:
-                coords_main = np.random.uniform(-self._buff, self._leng, newStims)[:, np.newaxis]
+                if self.rng is not None:
+                    coords_main = self.rng.uniform(-self._buff, self._leng, newStims)[:, np.newaxis]
+                else:
+                    coords_main = np.random.uniform(-self._buff, self._leng, newStims)[:, np.newaxis]
                 coords = np.concatenate((coords_main, coords_buff), axis=1)
                 for i, val in enumerate(coords):
                     if val[0] > self.init_wid*self._ratio: # samples in the height area
@@ -423,7 +461,10 @@ class OurStims(ElementArrayStim):
     def _update_stim_speed(self, signal=None):        
         # flip speed (i.e., direction) if needed
         if signal==1 or self._countframes in self.flipstart:
-            self._randel = np.where(np.random.rand(self.nElements) < self.flipfrac)[0]
+            if self.rng is not None:
+                self._randel = np.where(self.rng.rand(self.nElements) < self.flipfrac)[0]
+            else:
+                self._randel = np.where(np.random.rand(self.nElements) < self.flipfrac)[0]
             self._speed[self._randel] = -self.defaultspeed
             if self._randel.size == 0: # in case no elements are selected
                 self._randel = None
@@ -460,7 +501,10 @@ class OurStims(ElementArrayStim):
             if self._orikappa is None: # no dispersion
                 self._oriarrays.append(np.ones(self.nElements)*i)
             else:
-                neworisrad = np.random.vonmises(np.deg2rad(i), self._orikappa, self.nElements)
+                if self.rng is not None:
+                    neworisrad = self.rng.vonmises(np.deg2rad(i), self._orikappa, self.nElements)
+                else:
+                    neworisrad = np.random.vonmises(np.deg2rad(i), self._orikappa, self.nElements)
                 self._oriarrays.append(np.rad2deg(neworisrad))
         
         self.oris = self._oriarrays[0]
@@ -476,7 +520,10 @@ class OurStims(ElementArrayStim):
             sizes = np.ones(nStims)*self._sizeparams[0]
         else:
             # sample uniformly from range
-            sizes = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
+            if self.rng is not None:
+                sizes = self.rng.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
+            else:
+                sizes = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
             # use instead if want to initialize width and height independently
 #            size_w = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)
 #            size_h = np.random.uniform(self._sizeparams[0], self._sizeparams[1], nStims)

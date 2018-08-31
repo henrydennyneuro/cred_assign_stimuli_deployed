@@ -1,7 +1,6 @@
 import pickle as pkl
 import os
 import numpy as np
-import random
 import itertools
 import time
 
@@ -90,8 +89,8 @@ def posarray(rng, fieldsize, n_elem, n_im):
     fieldsize, number of elements (e.g., of gabors), 
     and number of images (e.g., A, B, C, D, E).
     """
-    coords_wid = np.random.uniform(-fieldsize[0]/2, fieldsize[0]/2, [n_im, n_elem])[:, :, np.newaxis]
-    coords_hei = np.random.uniform(-fieldsize[1]/2, fieldsize[1]/2, [n_im, n_elem])[:, :, np.newaxis]
+    coords_wid = rng.uniform(-fieldsize[0]/2, fieldsize[0]/2, [n_im, n_elem])[:, :, np.newaxis]
+    coords_hei = rng.uniform(-fieldsize[1]/2, fieldsize[1]/2, [n_im, n_elem])[:, :, np.newaxis]
         
     return np.concatenate((coords_wid, coords_hei), axis=2)
 
@@ -104,8 +103,7 @@ def sizearray(rng, size_ran, n_elem, n_im):
     if len(size_ran) == 1:
         size_ran = [size_ran[0], size_ran[0]]
     
-    sizes = np.random.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
-    np.random.seed(None)
+    sizes = rng.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
     
     return np.around(sizes)
 
@@ -120,7 +118,7 @@ def possizearrays(rng, size_ran, fieldsize, n_elem, n_im):
     
     return zip(pos, sizes)  
 
-def createseqlen(block_segs, regs, surps):
+def createseqlen(rng, block_segs, regs, surps):
     """
     Arg:
         block_segs: number of segs per block
@@ -141,8 +139,8 @@ def createseqlen(block_segs, regs, surps):
     # sample a few lengths to start, without going over block length
     n = int(block_segs/(regs[1]+surps[1]))
     # mins and maxs to sample from
-    reg_block_len = np.random.randint(regs[0], regs[1] + 1, n).tolist()
-    surp_block_len = np.random.randint(surps[0], surps[1] + 1, n).tolist()
+    reg_block_len = rng.randint(regs[0], regs[1] + 1, n).tolist()
+    surp_block_len = rng.randint(surps[0], surps[1] + 1, n).tolist()
     reg_sum = sum(reg_block_len)
     surp_sum = sum(surp_block_len)
     
@@ -160,13 +158,13 @@ def createseqlen(block_segs, regs, surps):
             # get new allowable ranges
             reg_min = max(regs[0], rem - surps[1])
             reg_max = min(regs[1], rem - surps[0])
-            new_reg_block_len = np.random.randint(reg_min, reg_max + 1)
+            new_reg_block_len = rng.randint(reg_min, reg_max + 1)
             new_surp_block_len = int(rem - new_reg_block_len)
         
         # Otherwise just get a new value
         else:
-            new_reg_block_len = np.random.randint(regs[0], regs[1] + 1)
-            new_surp_block_len = np.random.randint(surps[0], surps[1] + 1)
+            new_reg_block_len = rng.randint(regs[0], regs[1] + 1)
+            new_surp_block_len = rng.randint(surps[0], surps[1] + 1)
         
         reg_block_len.append(new_reg_block_len)
         surp_block_len.append(new_surp_block_len)
@@ -176,7 +174,7 @@ def createseqlen(block_segs, regs, surps):
 
     return [reg_block_len, surp_block_len]
 
-def orisurpgenerator(oris, block_segs):
+def orisurpgenerator(rng, oris, block_segs):
     """
     Args:
         oris: mean orientations
@@ -198,7 +196,7 @@ def orisurpgenerator(oris, block_segs):
         # deal with reg
         oriadd = list()
         for _ in range(int(np.ceil(reg/n_oris))):
-            random.shuffle(oris) # in place
+            rng.shuffle(oris) # in place
             oriadd.extend(oris[:])
         oriadd = oriadd[:reg] # chop!
         surpadd = np.zeros_like(oriadd) # keep track of not surprise (0)
@@ -208,7 +206,7 @@ def orisurpgenerator(oris, block_segs):
         # deal with surp
         oriadd = list()
         for _ in range(int(np.ceil(surp/n_oris))):
-            random.shuffle(oris) # in place
+            rng.shuffle(oris) # in place
             oriadd.extend(oris[:])
         oriadd = oriadd[:surp]
         surpadd = np.ones_like(oriadd) # keep track of surprise (1)
@@ -218,7 +216,7 @@ def orisurpgenerator(oris, block_segs):
     return zip(orilist, surplist)
 
 
-def orisurporder(oris, n_im, im_len, reg_len, surp_len, block_len):
+def orisurporder(rng, oris, n_im, im_len, reg_len, surp_len, block_len):
     """
     Args:
         oris: orientations
@@ -238,11 +236,11 @@ def orisurporder(oris, n_im, im_len, reg_len, surp_len, block_len):
     block_segs = block_len/set_len # nbr of segs per block, e.g. 680
     
     # get seq lengths
-    block_segs = createseqlen(block_segs, reg_sets, surp_sets)
+    block_segs = createseqlen(rng, block_segs, reg_sets, surp_sets)
     
     # from seq durations get zipped lists, one of oris, one of surp=0 or 1
     # for each image
-    orisurplist = orisurpgenerator(oris, block_segs)
+    orisurplist = orisurpgenerator(rng, oris, block_segs)
 
     return orisurplist
 
@@ -272,7 +270,7 @@ def flipgenerator(flipcode, segperblock):
     return fliplist
 
 
-def fliporder(seg_len, reg_len, surp_len, block_len):
+def fliporder(rng, seg_len, reg_len, surp_len, block_len):
     """ 
     Args:
         seg_len: duration of each segment (arbitrary minimal time segment)
@@ -292,7 +290,7 @@ def fliporder(seg_len, reg_len, surp_len, block_len):
     block_segs = block_len/seg_len # nbr of segs per block, e.g. 540
     
     # get seg lengths
-    segperblock = createseqlen(block_segs, reg_segs, surp_segs)
+    segperblock = createseqlen(rng, block_segs, reg_segs, surp_segs)
     
     # flip code: [reg, flip]
     flipcode = [0, 1]
@@ -303,7 +301,7 @@ def fliporder(seg_len, reg_len, surp_len, block_len):
     return fliplist
 
 
-def init_run_squares(window, seed_info, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
+def init_run_squares(window, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
 
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, square_params['units'])
@@ -326,16 +324,21 @@ def init_run_squares(window, seed_info, direc, session_params, recordPos, square
     n_Squares = int(square_params['density']*fieldsize[0]*fieldsize[1] \
                 /np.square(size))
     
+    # check whether it is a habituation session. If so, remove any surprise
+    # segments
+    if session_params['type'] == 'hab':
+        square_params['reg_len'] = [session_params['sq_dur'], session_params['sq_dur']]
+        square_params['surp_len'] = [0, 0]
+
     # establish a pseudorandom array of when to switch from reg to mismatch
     # flow and back    
-    fliparray = fliporder(square_params['seg_len'],
+    fliparray = fliporder(session_params['rng'],
+                          square_params['seg_len'],
                           square_params['reg_len'], 
                           square_params['surp_len'],
                           session_params['sq_dur'])
     
     session_params['windowpar'] = [fieldsize, deg_per_pix]
-    session_params['fliparray'] = fliparray
-    session_params['seed'] = seed_info['seed']
     
     elemPar={ # parameters set by ElementArrayStim
             'units': square_params['units'],
@@ -355,11 +358,13 @@ def init_run_squares(window, seed_info, direc, session_params, recordPos, square
     # Create the stimulus array
     squares = OurStims(window, elemPar, fieldsize, direc=direc, speed=speed,
                          flipfrac=square_params['flipfrac'],
-                         currval=fliparray[0])
+                         currval=fliparray[0],
+                         rng=session_params['rng'])
     
     # Add these attributes for the logs
     squares.square_params = square_params
     squares.actual_fps = act_fps
+    squares.direc = direc
     
     sq = Stimulus(squares,
                   sweepPar,
@@ -378,7 +383,7 @@ def init_run_squares(window, seed_info, direc, session_params, recordPos, square
 
     # record attributes from OurStims
     attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'square_params',
-               'initScr', 'autoLog', 'units','actual_fps', 
+               'initScr', 'autoLog', 'units','actual_fps', 'direc', 
                'session_params', 'last_frame']
     
     sq.stimParams = {key:sq.stim.__dict__[key] for key in attribs}
@@ -386,7 +391,7 @@ def init_run_squares(window, seed_info, direc, session_params, recordPos, square
     return sq
 
 
-def init_run_gabors(window, seed_info, session_params, recordOris, gabor_params=GABOR_PARAMS):
+def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS):
 
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, gabor_params['units'])
@@ -408,15 +413,22 @@ def init_run_gabors(window, seed_info, session_params, recordOris, gabor_params=
     size_ran = [np.around(x * gabor_modif) for x in size_ran]
     
     # get positions and sizes for each image (A, B, C, D, E)
-    session_params['possize'] = possizearrays(seed_info['rng'],
+    session_params['possize'] = possizearrays(session_params['rng'],
                                               size_ran, 
                                               fieldsize, 
                                               gabor_params['n_gabors'], 
                                               gabor_params['n_im'])
     
+    # check whether it is a habituation session. If so, remove any surprise
+    # segments
+    if session_params['type'] == 'hab':
+        gabor_params['reg_len'] = [session_params['gab_dur'], session_params['gab_dur']]
+        gabor_params['surp_len'] = [0, 0]
+
     # establish a pseudorandom order of orientations to cycle through
     # (surprise integrated as well)    
-    orisurps = orisurporder(gabor_params['oris'], 
+    orisurps = orisurporder(session_params['rng'],
+                            gabor_params['oris'], 
                             gabor_params['n_im'], 
                             gabor_params['im_len'], 
                             gabor_params['reg_len'], 
@@ -424,7 +436,6 @@ def init_run_gabors(window, seed_info, session_params, recordOris, gabor_params=
                             session_params['gab_dur'])
     
     session_params['windowpar'] = [fieldsize, deg_per_pix]
-    session_params['seed'] = seed_info['seed']
             
     elemPar={ # parameters set by ElementArrayStim
             'units': gabor_params['units'],
@@ -447,7 +458,8 @@ def init_run_gabors(window, seed_info, session_params, recordOris, gabor_params=
     
     # Create the stimulus array 
     gabors = OurStims(window, elemPar, fieldsize, orikappa=kap,
-                          possizes=session_params['possize'])
+                          possizes=session_params['possize'],
+                          rng=session_params['rng'])
     
     # Add these attributes for the logs
     gabors.gabor_params = gabor_params
@@ -462,8 +474,7 @@ def init_run_gabors(window, seed_info, session_params, recordOris, gabor_params=
                   )
     
     # record attributes from OurStims
-    if recordOris: # potentially large arrays
-        session_params['orisurps'] = orisurps 
+    if recordOris: # potentially large array
         session_params['orisbyimg'] = gabors.orisByImg
     
     # add more attribute for the logs
