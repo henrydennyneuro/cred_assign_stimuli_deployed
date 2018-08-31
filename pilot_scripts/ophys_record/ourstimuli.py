@@ -22,7 +22,7 @@ class OurStims(ElementArrayStim):
                  win,
                  elemParams,
                  fieldSize, # [wid, hei]
-                 direc=0.0, # only supports a single value (including 'right' or 'left'). Use speed to flip direction of some elements.
+                 direc=0.0, # only supports a single value. Use speed to flip direction of some elements.
                  speed=0.0, # units are sort of arbitrary for now
                  sizeparams=None, # range from which to sample uniformly [min, max]. Height and width sampled separately from same range.
                  possizes=None, # zipped lists of pos and sizes (each same size as nStims) for A, B, C, D, E
@@ -34,7 +34,7 @@ class OurStims(ElementArrayStim):
                  flipdirec=[], # intervals during which to flip direction [start, end (optional)]S
                  flipfrac=0.0, # fraction of elements that should be flipped (0 to 1)
                  duration=-1, # duration in seconds (-1 for no end)
-                 currval=None, # pass some values for the first initialization (from fliparray)
+                 currval=None, # pass some values for the first initialization (from flipdirecarray)
                  initScr=True, # initialize elements on the screen
                  fps=60, # frames per second
                  autoLog=None):
@@ -50,11 +50,24 @@ class OurStims(ElementArrayStim):
             
             self.elemParams = elemParams
             
+            self._suppress = 0 # number of elements to suppress (keep out of field)
+            
             self.setFieldSize(fieldSize)
             self.init_wid = fieldSize[0] * 1.1 # add a little buffer
             self.init_hei = fieldSize[1] * 1.1 # add a little buffer
             
             self.possizes = possizes
+            
+            if currval is not None:
+                self.setSizes(currval[1])
+                self._currsize = currval[1]
+                self._suppress = self.nElements - currval[2]
+                direc = currval[3]
+                self._currdirec = currval[3]
+            else:
+                self._currsize = None
+                self._currdirec = None
+                self._suppress = 0
 
             self._sizeparams = sizeparams
             if self._sizeparams is not None:
@@ -75,8 +88,6 @@ class OurStims(ElementArrayStim):
             self._newpos = newpos
             
             self._flip=0
-            if currval is not None:
-                self._flip=currval
             self.defaultspeed = speed
             self._speed = np.ones(self.nElements)*speed
             self._flipdirec = flipdirec
@@ -113,6 +124,9 @@ class OurStims(ElementArrayStim):
             if possizes is None:
                 self._newStimsXY(self.nElements) # update self._coords
                 # start recording positions
+                
+                if self._suppress != 0: # update in case suppression is required
+                    self._suppressExtraStims()
                 self.setXYs(self._coords)
             
             else: 
@@ -147,37 +161,61 @@ class OurStims(ElementArrayStim):
         self._direc = direc
 
 
-    def setFlip(self, fliparray, operation='', log=None):
+    def setFlipDirecSize(self, flipdirecarray, operation='', log=None):
         """Not used internally, but just to allows direction flips to occur, 
         new sizes and number of elements, and a new direction to be set.
         """
         # check if switching from reg to mismatch or back, and if so initiate
         # speed update
-        if self._flip == 1 and fliparray == 0:
+        if self._flip == 1 and flipdirecarray[0] == 0:
             self._flip=0
             self._update_stim_speed(self._flip)
-        elif self._flip == 0 and fliparray == 1:
+        elif self._flip == 0 and flipdirecarray[0] == 1:
             self._flip=1
             self._update_stim_speed(self._flip)
         
         newInit = False
+        # if new size (and number), change size (and number) and request reinitialization
+        if self._currsize != flipdirecarray[1]:
+            self._currsize = flipdirecarray[1]
+            self.setSizes(flipdirecarray[1])
+            if flipdirecarray[2] < self.nElements: # suppress stims?
+                self._suppress = self.nElements - flipdirecarray[2]
+            elif flipdirecarray[2] == self.nElements:
+                self._suppress = 0
+            newInit = True
+        
+        # if new direction, change direction and request reinitialization
+        if self._currdirec != flipdirecarray[3]:
+            self._currdirec = flipdirecarray[3]
+            self.setDirec(flipdirecarray[3])
+            self._stimOriginVar()
+            newInit = True
+        
         # reinitialize
         if newInit is True:
             self.initScr = True
             self._newStimsXY(self.nElements) # updates self._coords
+            if self._suppress != 0: # update in case suppression is required
+                self._suppressExtraStims()
             self.setXYs(self._coords)
             newInit = False
     
-    def setOriSurp(self, oriparsurp, operation='', log=None):
+    def _suppressExtraStims(self):
+        self._coords[self.nElements-self._suppress:,0] = -self.init_wid/2-self._buff/2
+        self._coords[self.nElements-self._suppress:,1] = -self.init_hei/2-self._buff/2
+    
+    def setOriParSurp(self, oriparsurp, operation='', log=None):
         """Not used internally, but just to allow new sets of orientations to 
-        be initialized based on a new mu, and set whether the 4th set 
+        be initialized based on a new mu, new kappa and set whether the 4th set 
         is a surprise (90 deg shift and E locations and sizes).
         """
         
         self._orimu = oriparsurp[0] # set orientation mu (deg)
+        self._orikappa = oriparsurp[1] # set orientation kappa (rad)
         
         # set if surprise set
-        self._surp = oriparsurp[1]
+        self._surp = oriparsurp[2]
         
         # set orientations
         self.setOriParams(operation, log)
@@ -410,9 +448,9 @@ class OurStims(ElementArrayStim):
         if self._randel is not None and dead[self._randel].any():
             dead = self._revive_flipped_stim(dead)
         
-        ##update XY based on speed and dir
-        self._coords[:self.nElements,0] += self._speed[:self.nElements]*np.cos(self._dirRad)
-        self._coords[:self.nElements,1] += self._speed[:self.nElements]*np.sin(self._dirRad)# 0 radians=East!
+        ##update XY based on speed and dir (except for those being suppressed)
+        self._coords[:self.nElements-self._suppress,0] += self._speed[:self.nElements-self._suppress]*np.cos(self._dirRad)
+        self._coords[:self.nElements-self._suppress,1] += self._speed[:self.nElements-self._suppress]*np.sin(self._dirRad)# 0 radians=East!
         
         #update any dead stims
         if dead.any():
@@ -423,7 +461,7 @@ class OurStims(ElementArrayStim):
     def _update_stim_speed(self, signal=None):        
         # flip speed (i.e., direction) if needed
         if signal==1 or self._countframes in self.flipstart:
-            self._randel = np.where(np.random.rand(self.nElements) < self.flipfrac)[0]
+            self._randel = np.where(np.random.rand(self.nElements-self._suppress) < self.flipfrac)[0]
             self._speed[self._randel] = -self.defaultspeed
             if self._randel.size == 0: # in case no elements are selected
                 self._randel = None

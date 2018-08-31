@@ -23,13 +23,12 @@ GABOR_PARAMS = {
                 'phase': 0.25, #value 0-1
                 
                 'oris': [0.0, 45.0, 90.0, 135.0], # orientation means to use (deg)
-                'ori_std': [0.25, 0.5], # orientation st dev to use (rad) (do not pass 0)
+                'ori_std': 0.25, # orientation st dev to use (rad) (single value)
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'im_len': 0.3, # duration (sec) of each image (e.g., A)
                 'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
                 'surp_len': [3, 6], # range of durations (sec) for seq of surprise sets
-                'block_len': 17*60, # duration (sec) of each block (1 per kappa (or ori_std) value, i.e. 2)
                 'sd': 3, # nbr of st dev (gauss) to edge of gabor (default is 6)
                 
                 ### Changing these will require tweaking downstream...
@@ -39,17 +38,15 @@ GABOR_PARAMS = {
 
 SQUARE_PARAMS = {
                 ### PARAMETERS TO SET
-                'sizes': [8, 16], # in deg (regardless of units below)
-                'direcs': ['right', 'left'], # main direction 
+                'size': 8, # in deg (regardless of units below)
                 'speed': 50, # deg/sec (regardless of units below)
-                'flipfrac':0.25, # fraction of elements that should be flipped (0 to 1)
-                
+                'flipfrac': 0.25, # fraction of elements that should be flipped (0 to 1)
+                'density': 0.75,
                 'seg_len': 1, # duration (sec) of each segment (somewhat arbitrary)
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'reg_len': [30, 90], # range of durations (sec) for reg flow
                 'surp_len': [2, 4], # range of durations (sec) for mismatch flow
-                'block_len': 9*60, # duration (sec) of each block (1 per direc/size combo, i.e. 4)
                 
                 ### Changing these will require tweaking downstream...
                 'units': 'pix', # avoid using deg, comes out wrong at least on my computer (scaling artifact? 1.7)
@@ -89,75 +86,51 @@ def winVar(win, units):
         
 def posarray(rng, fieldsize, n_elem, n_im):
     """Returns 2D array of positions in field.
-    Takes fieldsize, number of elements (e.g., of gabors), and number of 
-    images (e.g., A, B, C, D, E).
-    
-    Seeding (using rng) can be used to ensure it is consistent for each animal.
+    Takes a seeded numpy random number generator, 
+    fieldsize, number of elements (e.g., of gabors), 
+    and number of images (e.g., A, B, C, D, E).
     """
-    if rng is not None:
-        coords_wid = rng.uniform(-fieldsize[0]/2, fieldsize[0]/2, [n_im, n_elem])[:, :, np.newaxis]
-        coords_hei = rng.uniform(-fieldsize[1]/2, fieldsize[1]/2, [n_im, n_elem])[:, :, np.newaxis]
-    else:
-        coords_wid = np.random.uniform(-fieldsize[0]/2, fieldsize[0]/2, [n_im, n_elem])[:, :, np.newaxis]
-        coords_hei = np.random.uniform(-fieldsize[1]/2, fieldsize[1]/2, [n_im, n_elem])[:, :, np.newaxis]
+    coords_wid = np.random.uniform(-fieldsize[0]/2, fieldsize[0]/2, [n_im, n_elem])[:, :, np.newaxis]
+    coords_hei = np.random.uniform(-fieldsize[1]/2, fieldsize[1]/2, [n_im, n_elem])[:, :, np.newaxis]
         
     return np.concatenate((coords_wid, coords_hei), axis=2)
 
 def sizearray(rng, size_ran, n_elem, n_im):
     """Returns array of sizes in range (1D).
-    Takes start and end of range, number of elements (e.g., of gabors), and 
-    number of images (e.g., A, B, C, D, E).
-    
-    Seeding (using rng) can be used to ensure it is consistent for each animal.
+    Takes a seeded numpy random number generator, 
+    start and end of range, number of elements 
+    (e.g., of gabors), and number of images (e.g., A, B, C, D, E).
     """
     if len(size_ran) == 1:
         size_ran = [size_ran[0], size_ran[0]]
     
-    if rng is not None:
-        sizes = rng.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
-    else:
-        sizes = np.random.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
+    sizes = np.random.uniform(size_ran[0], size_ran[1], [n_im, n_elem])
     np.random.seed(None)
     
     return np.around(sizes)
 
 def possizearrays(rng, size_ran, fieldsize, n_elem, n_im):
     """Returns zip of list of pos and sizes for n_elem.
-    Takes start and end of size range, fieldsize, number of elements (e.g., of 
+    Takes a seeded numpy random number generator,
+    start and end of size range, fieldsize, number of elements (e.g., of 
     gabors), and number of images (e.g., A, B, C, D/E).
-    
-     Seeding (using rng) can be used to ensure it is consistent for each animal.
     """
     pos = posarray(rng, fieldsize, n_elem, n_im + 1) # add one for E
     sizes = sizearray(rng, size_ran, n_elem, n_im + 1) # add one for E
     
-    return zip(pos, sizes)
+    return zip(pos, sizes)  
 
-def setblock_order(rng, ori_std):
-    """Returns shuffled list of kappas based on standard deviation in radians.
-       Seeding (using rng) can be used to ensure it is consistent for each animal.
-    """
-    block_order = [1.0/x**2 for x in ori_std]
-    
-    if rng is not None:
-        rng.shuffle(block_order)
-    else:
-        np.random.shuffle(block_order)
-    
-    return block_order
-    
-
-def createseqlen(block_segs, regs, surps, n_blocks):
+def createseqlen(block_segs, regs, surps):
     """
     Arg:
         block_segs: number of segs per block
         regs: duration of each regular set/seg 
         surps: duration of each regular set/seg
-        n_blocks: number of blocks.
     
     Returns:
-         list of sublists for each block. Each sublist contains a sublist of 
-         regular set durations and a sublist of surprise set durations.
+         list comprising a sublist of regular set durations 
+         and a sublist of surprise set durations, both of equal
+         lengths.
     
     FYI, this may go on forever for problematic duration ranges.
     
@@ -165,101 +138,87 @@ def createseqlen(block_segs, regs, surps, n_blocks):
     minim = regs[0]+surps[0] # smallest possible reg + surp set
     maxim = regs[1]+surps[1] # largest possible reg + surp set
     
-    # sample a few lengths to start, without going over kappa set length
+    # sample a few lengths to start, without going over block length
     n = int(block_segs/(regs[1]+surps[1]))
-    blocks = list() # list of lists for each kappa with their seq lengths
+    # mins and maxs to sample from
+    reg_block_len = np.random.randint(regs[0], regs[1] + 1, n).tolist()
+    surp_block_len = np.random.randint(surps[0], surps[1] + 1, n).tolist()
+    reg_sum = sum(reg_block_len)
+    surp_sum = sum(surp_block_len)
     
-    for i in range(n_blocks):
-        # mins and maxs to sample from
-        reg_block_len = np.random.randint(regs[0], regs[1] + 1, n).tolist()
-        surp_block_len = np.random.randint(surps[0], surps[1] + 1, n).tolist()
-        reg_sum = sum(reg_block_len)
-        surp_sum = sum(surp_block_len)
+    while reg_sum + surp_sum < block_segs:
+        rem = block_segs - reg_sum - surp_sum
+        # Check if at least the minimum is left. If not, remove last. 
+        while rem < minim:
+            # can increase to remove 2 if ranges are tricky...
+            reg_block_len = reg_block_len[0:-1]
+            surp_block_len = surp_block_len[0:-1]
+            rem = block_segs - sum(reg_block_len) - sum(surp_block_len)
+            
+        # Check if what is left is less than the maximum. If so, use up.
+        if rem <= maxim:
+            # get new allowable ranges
+            reg_min = max(regs[0], rem - surps[1])
+            reg_max = min(regs[1], rem - surps[0])
+            new_reg_block_len = np.random.randint(reg_min, reg_max + 1)
+            new_surp_block_len = int(rem - new_reg_block_len)
         
-        while reg_sum + surp_sum < block_segs:
-            print(reg_sum)
-            print(surp_sum)
-            print(block_segs)
-            rem = block_segs - reg_sum - surp_sum
-            # Check if at least the minimum is left. If not, remove last. 
-            while rem < minim:
-                # can increase to remove 2 if ranges are tricky...
-                reg_block_len = reg_block_len[0:-1]
-                surp_block_len = surp_block_len[0:-1]
-                rem = block_segs - sum(reg_block_len) - sum(surp_block_len)
-                
-            # Check if what is left is less than the maximum. If so, use up.
-            if rem <= maxim:
-                # get new allowable ranges
-                reg_min = max(regs[0], rem - surps[1])
-                reg_max = min(regs[1], rem - surps[0])
-                new_reg_block_len = np.random.randint(reg_min, reg_max + 1)
-                new_surp_block_len = int(rem - new_reg_block_len)
-            
-            # Otherwise just get a new value
-            else:
-                new_reg_block_len = np.random.randint(regs[0], regs[1] + 1)
-                new_surp_block_len = np.random.randint(surps[0], surps[1] + 1)
-            
-            reg_block_len.append(new_reg_block_len)
-            surp_block_len.append(new_surp_block_len)
-            
-            reg_sum = sum(reg_block_len)
-            surp_sum = sum(surp_block_len)     
-            
-        blocks.append([reg_block_len, surp_block_len])
+        # Otherwise just get a new value
+        else:
+            new_reg_block_len = np.random.randint(regs[0], regs[1] + 1)
+            new_surp_block_len = np.random.randint(surps[0], surps[1] + 1)
+        
+        reg_block_len.append(new_reg_block_len)
+        surp_block_len.append(new_surp_block_len)
+        
+        reg_sum = sum(reg_block_len)
+        surp_sum = sum(surp_block_len)     
 
-    return blocks
+    return [reg_block_len, surp_block_len]
 
-def oriparsurpgenerator(oris, block_order, block_segs):
+def orisurpgenerator(oris, block_segs):
     """
     Args:
         oris: mean orientations
-        block_order: order of block parameters (kappas for gabors, direc x size for squares)
-        block_segs: list of sublists for each block. Each sublist contains a sublist of 
-                    regular set durations and a sublist of surprise set durations.
+        block_segs: list comprising a sublist of regular set durations 
+                    and a sublist of surprise set durations, both of equal
+                    lengths
     
     Returns:
-        a zipped list of sublists with the mean orientation, kappa value
-        and surprise value for each image (each 300 ms for example).
+        zipped lists, one of mean orientation, and one of surprise value 
+        for each image sequence.
     
     FYI, this may go on forever for problematic duration ranges.
     """
     n_oris = float(len(oris)) # number of orientations
-    orisurplist = list()
-    
-    for k, kap in enumerate(block_segs): # kappa 
-        orisublist = list()
-        surpsublist = list()
-        for i, (reg, surp) in enumerate(zip(kap[0], kap[1])):     
-            # deal with gen
-            oriadd = list()
-            for j in range(int(np.ceil(reg/n_oris))):
-                random.shuffle(oris) # in place
-                oriadd.extend(oris[:])
-            oriadd = oriadd[:reg] # chop!
-            surpadd = np.zeros_like(oriadd) # keep track of not surprise (0)
-            orisublist.extend(oriadd)
-            surpsublist.extend(surpadd)
-            
-            # deal with surp
-            oriadd = list()
-            for j in range(int(np.ceil(surp/n_oris))):
-                random.shuffle(oris) # in place
-                oriadd.extend(oris[:])
-            oriadd = oriadd[:surp]
-            surpadd = np.ones_like(oriadd) # keep track of surprise (1)
-            orisublist.extend(oriadd)
-            surpsublist.extend(surpadd)
-        block_segsublist = np.ones_like(surpsublist) * block_order[k]
-        
-        orisurplist.extend(zip(orisublist, block_segsublist, surpsublist))
-        
-    
-    return orisurplist
-    
 
-def oriparsurporder(oris, n_im, im_len, reg_len, surp_len, block_order, block_len):
+    orilist = list()
+    surplist = list()
+    for _, (reg, surp) in enumerate(zip(block_segs[0], block_segs[1])):     
+        # deal with reg
+        oriadd = list()
+        for _ in range(int(np.ceil(reg/n_oris))):
+            random.shuffle(oris) # in place
+            oriadd.extend(oris[:])
+        oriadd = oriadd[:reg] # chop!
+        surpadd = np.zeros_like(oriadd) # keep track of not surprise (0)
+        orilist.extend(oriadd)
+        surplist.extend(surpadd)
+        
+        # deal with surp
+        oriadd = list()
+        for _ in range(int(np.ceil(surp/n_oris))):
+            random.shuffle(oris) # in place
+            oriadd.extend(oris[:])
+        oriadd = oriadd[:surp]
+        surpadd = np.ones_like(oriadd) # keep track of surprise (1)
+        orilist.extend(oriadd)
+        surplist.extend(surpadd)
+    
+    return zip(orilist, surplist)
+
+
+def orisurporder(oris, n_im, im_len, reg_len, surp_len, block_len):
     """
     Args:
         oris: orientations
@@ -267,71 +226,58 @@ def oriparsurporder(oris, n_im, im_len, reg_len, surp_len, block_order, block_le
         im_len: duration of each image
         reg_len: range of durations of reg seq
         surp_len: range of durations of surp seq
-        block_order: order of block parameters (kappas for gabors)
-        block_len: duration of each block (single value)
+        block_len: duration of the block (single value)
     
     Returns:
-        a zipped list of sublists with the mean orientation, kappa value
-        and surprise value (0 or 1) for each image (each 300 ms for example).
-    
+        zipped lists, one of mean orientation, and one of surprise value 
+        for each image sequence.
     """
     set_len = im_len * (n_im + 1.0) # duration of set (incl. one blank per set)
     reg_sets = [x/set_len for x in reg_len] # range of nbr of sets per regular seq, e.g. 20-60
     surp_sets = [x/set_len for x in surp_len] # range of nbr of sets per surprise seq, e.g., 2-4
     block_segs = block_len/set_len # nbr of segs per block, e.g. 680
-    n_blocks = len(block_order) # nbr of blocks (kappas)
     
     # get seq lengths
-    block_segs = createseqlen(block_segs, reg_sets, surp_sets, n_blocks)
+    block_segs = createseqlen(block_segs, reg_sets, surp_sets)
     
-    # from seq durations get a list each kappa or (ori, surp=0 or 1)
-    oriparsurplist = oriparsurpgenerator(oris, block_order, block_segs)
+    # from seq durations get zipped lists, one of oris, one of surp=0 or 1
+    # for each image
+    orisurplist = orisurpgenerator(oris, block_segs)
 
-    return oriparsurplist
+    return orisurplist
 
 
-def flipdirecgenerator(flipcode, block_order, segperblock):
+def flipgenerator(flipcode, segperblock):
     """
     Args:
-        flipcode: should be [0, 1] with 0 for regular flow and 1 for mismatch flow.
-        block_order: order of block parameters (direc x size for squares)
-        segperblock: list of sublists for each block. Each sublist contains a sublist of 
-                     regular seg durations and a sublist of surprise seg durations.
+        flipcode: should be [0, 1] with 0 for regular flow and 1 for mismatch 
+                  flow.
+        segperblock: list comprising a sublist of regular set durations 
+                     and a sublist of surprise set durations, both of equal
+                     lengths.
     
     Returns:
-        a zipped list of sublists with the surprise value (0 or 1), size, 
-        number of squares, direction for each kappa value
-        and surprise value (0 or 1) for each segment (each 1s for example).
+        a list of surprise value (0 or 1), for each segment 
+        (each 1s for example).
     
     """
-    flipdireclist = list()
-    
-    for s, thisblock in enumerate(segperblock): # each block (sizexdirec)
-        surpsublist = list()
-        for i, (reg, surp) in enumerate(zip(thisblock[0], thisblock[1])):     
-            # deal with gen
-            regadd = [flipcode[0]] * reg
-            surpadd = [flipcode[1]] * surp
-            surpsublist.extend(regadd)
-            surpsublist.extend(surpadd)
-            
-        sizesublist = [block_order[s][0][0]] * len(surpsublist)
-        nsqusublist = [block_order[s][0][1]] * len(surpsublist)
-        direcsublist = [block_order[s][1]] * len(surpsublist)
+
+    fliplist = list()
+    for _, (reg, surp) in enumerate(zip(segperblock[0], segperblock[1])):
+        regadd = [flipcode[0]] * reg
+        surpadd = [flipcode[1]] * surp
+        fliplist.extend(regadd)
+        fliplist.extend(surpadd)
         
-        flipdireclist.extend(zip(surpsublist, sizesublist, nsqusublist,
-                                 direcsublist))
-    
-    return flipdireclist
+    return fliplist
 
 
-def flipdirecorder(seg_len, reg_len, surp_len, block_order, block_len):
+def fliporder(seg_len, reg_len, surp_len, block_len):
     """ 
     Args:
         seg_len: duration of each segment (arbitrary minimal time segment)
         reg_len: range of durations of reg seq
         surp_len: range of durations of surp seq
-        block_order: order of block parameters (direc x size for squares)
         block_len: duration of each block (single value)
     
     Returns:
@@ -340,97 +286,34 @@ def flipdirecorder(seg_len, reg_len, surp_len, block_order, block_len):
         and surprise value (0 or 1) for each segment (each 1s for example).
     
     """
+
     reg_segs = [x/seg_len for x in reg_len] # range of nbr of segs per regular seq, e.g. 30-90
     surp_segs = [x/seg_len for x in surp_len] # range of nbr of segs per surprise seq, e.g., 2-4
     block_segs = block_len/seg_len # nbr of segs per block, e.g. 540
-    n_blocks = len(block_order)
     
     # get seg lengths
-    segperblock = createseqlen(block_segs, reg_segs, surp_segs, n_blocks)
+    segperblock = createseqlen(block_segs, reg_segs, surp_segs)
     
     # flip code: [reg, flip]
     flipcode = [0, 1]
     
     # from seq durations get a list each kappa or (ori, surp=0 or 1)
-    flipdireclist = flipdirecgenerator(flipcode, block_order, segperblock)
+    fliplist = flipgenerator(flipcode, segperblock)
 
-    return flipdireclist
-
-
-def load_config(stimtype, subj_id):
-    config_root = '.\config'
-    config_name = '{}_subj{}_config.pkl'.format(stimtype, subj_id)
-    config_file = os.path.join(config_root, config_name)
-    
-    # if they exist, retrieve the parameters specific to the subject.
-    # otherwise, create them
-    if subj_id is not None and os.path.exists(config_file):
-        with open(config_file, 'r') as f:
-            subj_params = pkl.load(f)
-            print('Existing subject config used: {}.'.format(config_file))
-        return subj_params
-    else:
-        return None
+    return fliplist
 
 
-def save_config(stimtype, subj_id, subj_params):
-    config_root = '.\config'
-    config_name = '{}_subj{}_config.pkl'.format(stimtype, subj_id)
-    config_file = os.path.join(config_root, config_name)
-    
-    # if config directory does not exist, create it
-    if not os.path.exists(config_root):
-        os.makedirs(config_root)
-    
-    with open(config_file, 'w') as f:
-        pkl.dump(subj_params, f)
-        print('New subject config saved under: {}'.format(config_file))
+def init_run_squares(window, seed_info, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
 
-    
-def save_session_params(stimtype, subj_id, sess_id, stim_params, subj_params):
-    params_root = '.\config'
-    time_info = {
-                'timestr': time.strftime("%Y%m%d-%H%M%S")
-                }
-    if subj_id is not None:
-        all_params_name = '{}_subj{}_sess{}_params'.format(stimtype, subj_id, sess_id)
-    else:
-        all_params_name = '{}_{}_params'.format(stimtype, time_info['timestr'])
-    all_params_ext = '.pkl'
-    all_params_file = os.path.join(params_root, all_params_name + all_params_ext)
-    
-    # if params directory does not exist, create it
-    if not os.path.exists(params_root):
-        os.makedirs(params_root)
-    
-    # save the parameters for this subject and session
-    if os.path.exists(all_params_file):
-        i = 0
-        all_params = '{}_{}{}'.format(all_params_name, i, all_params_ext)
-        all_params_file = os.path.join(params_root, all_params)
-        while os.path.exists(all_params_file):
-           i +=1
-           all_params = '{}_{}{}'.format(all_params_name, i, all_params_ext)
-           all_params_file = os.path.join(params_root, all_params)
-    
-    with open(all_params_file, 'w') as f:
-        pkl.dump(time_info, f)
-        pkl.dump(stim_params, f)
-        pkl.dump(subj_params, f)
-        print('Session parameters saved under: {}'.format(all_params_file))
-
-
-def init_run_squares(window, subj_id, sess_id, seed, extrasave, recordPos, square_params=SQUARE_PARAMS):
-    
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, square_params['units'])
     
     # convert values to pixels if necessary
     if square_params['units'] == 'pix':
-        sizes = [np.around(x/deg_per_pix) for x in square_params['sizes']]
+        size = np.around(square_params['size']/deg_per_pix)
         speed = square_params['speed']/deg_per_pix
     else:
-        sizes = square_params['size']
+        size = square_params['size']
         speed = square_params['speed']
     
     # convert speed for units/s to units/frame
@@ -440,54 +323,24 @@ def init_run_squares(window, subj_id, sess_id, seed, extrasave, recordPos, squar
     act_fps = window.getMsPerFrame() # returns average, std, median
     
     # calculate number of squares for each square size
-    area = fieldsize[0]*fieldsize[1]
-    squarea = [np.square(x) for x in sizes]
-    n_Squares = [int(0.5*area/x) for x in squarea]
-    
-    # parameter loading and recording steps are only done if a subj_id
-    # is passed.
-    # find whether parameters have been saved for this animal
-    if subj_id is not None:
-        subj_params = load_config('sq', subj_id)
-    
-    if subj_id is None or subj_params is None:
-        subj_params = {}
-        
-        # set set order for each subject
-        basic = list(itertools.product(zip(sizes, n_Squares), 
-                                       square_params['direcs']))
-        if seed is not None:
-            rng = np.random.RandomState(seed)
-            rng.shuffle(basic)
-        else:
-            np.random.shuffle(basic)
-
-        block_order = basic[:]
-        
-        subj_params['block_order'] = block_order
-    
-        if subj_id is not None:
-            save_config('sq', subj_id, subj_params)
+    n_Squares = int(square_params['density']*fieldsize[0]*fieldsize[1] \
+                /np.square(size))
     
     # establish a pseudorandom array of when to switch from reg to mismatch
     # flow and back    
-    flipdirecarray = flipdirecorder(square_params['seg_len'],
-                                    square_params['reg_len'], 
-                                    square_params['surp_len'],
-                                    subj_params['block_order'],
-                                    square_params['block_len'])
+    fliparray = fliporder(square_params['seg_len'],
+                          square_params['reg_len'], 
+                          square_params['surp_len'],
+                          session_params['sq_dur'])
     
-    subj_params['windowpar'] = [fieldsize, deg_per_pix]
-    subj_params['flipdirecarray'] = flipdirecarray
-    subj_params['seed'] = seed
-    
-    # save parameters for subject and session under ./config
-    if extrasave:
-        save_session_params('sq', subj_id, sess_id, square_params, subj_params)
+    session_params['windowpar'] = [fieldsize, deg_per_pix]
+    session_params['fliparray'] = fliparray
+    session_params['seed'] = seed_info['seed']
     
     elemPar={ # parameters set by ElementArrayStim
             'units': square_params['units'],
-            'nElements': max(n_Squares), # initialize with max
+            'nElements': n_Squares,
+            'sizes': size,
             'fieldShape': 'sqr',
             'contrs': 1.0,
             'elementTex': None,
@@ -496,47 +349,45 @@ def init_run_squares(window, subj_id, sess_id, seed, extrasave, recordPos, squar
             }
     
     sweepPar={ # parameters to sweep over (0 is outermost parameter)
-            'FlipDirecSize': (flipdirecarray, 0),
+            'Flip': (fliparray, 0),
             }
     
     # Create the stimulus array
-    squares = OurStims(window, elemPar, fieldsize, speed=speed,
+    squares = OurStims(window, elemPar, fieldsize, direc=direc, speed=speed,
                          flipfrac=square_params['flipfrac'],
-                         currval=flipdirecarray[0])
+                         currval=fliparray[0])
     
     # Add these attributes for the logs
     squares.square_params = square_params
-    squares.subj_params = subj_params
     squares.actual_fps = act_fps
     
     sq = Stimulus(squares,
                   sweepPar,
                   sweep_length=square_params['seg_len'], 
                   start_time=0.0,
-                  blank_sweeps=square_params['block_len']/square_params['seg_len'],
                   runs=1,
                   shuffle=False,
                   )
+
+    # record attributes from OurStims
+    if recordPos: # potentially large arrays
+        session_params['posbyframe'] = squares.posByFrame
     
+    # add more attribute for the logs
+    squares.session_params = session_params
+
     # record attributes from OurStims
     attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'square_params',
-               'initScr', 'possizes', 'autoLog', 'units','actual_fps', 
-               'subj_params', 'last_frame']
-    
-    if recordPos:
-        attribs.extend(['posByFrame']) # potentially large array
+               'initScr', 'autoLog', 'units','actual_fps', 
+               'session_params', 'last_frame']
     
     sq.stimParams = {key:sq.stim.__dict__[key] for key in attribs}
     
     return sq
 
-def init_run_gabors(window, subj_id, sess_id, seed, extrasave, recordOris, gabor_params=GABOR_PARAMS):
-    
-    if seed is not None:
-        rng = np.random.RandomState(seed)
-    else:
-        rng = None
-    
+
+def init_run_gabors(window, seed_info, session_params, recordOris, gabor_params=GABOR_PARAMS):
+
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, gabor_params['units'])
     
@@ -548,48 +399,32 @@ def init_run_gabors(window, subj_id, sess_id, seed, extrasave, recordOris, gabor
         size_ran = gabor_params['size_ran']
         sf = gabor_params['sf']
     
+    # get kappa from orientation std
+    kap = 1.0/gabor_params['ori_std']**2
+
     # size is set as where gauss std=3 on each side (so size=6 std). 
     # Convert from full-width half-max
     gabor_modif = 1.0/(2*np.sqrt(2*np.log(2))) * gabor_params['sd']
     size_ran = [np.around(x * gabor_modif) for x in size_ran]
     
-    # parameter loading and recording steps are only done if a subj_id
-    # is passed.
-    # find whether parameters have been saved for this animal
-    if subj_id is not None:
-        subj_params = load_config('gab', subj_id)
-    
-    if subj_id is None or subj_params is None:
-        subj_params = {}
-        # get positions and sizes for each image (A, B, C, D, E)
-        subj_params['possize'] = possizearrays(rng,
-                                               size_ran, 
-                                               fieldsize, 
-                                               gabor_params['n_gabors'], 
-                                               gabor_params['n_im'])
-    
-        # get shuffled kappas: approximately 1/std**2 where std is in radians
-        subj_params['block_order'] = setblock_order(rng, gabor_params['ori_std'])
-        if subj_id is not None:
-            save_config('gab', subj_id, subj_params)
+    # get positions and sizes for each image (A, B, C, D, E)
+    session_params['possize'] = possizearrays(seed_info['rng'],
+                                              size_ran, 
+                                              fieldsize, 
+                                              gabor_params['n_gabors'], 
+                                              gabor_params['n_im'])
     
     # establish a pseudorandom order of orientations to cycle through
-    # (surprise and current kappa integrated as well)    
-    oriparsurps = oriparsurporder(gabor_params['oris'], 
-                                  gabor_params['n_im'], 
-                                  gabor_params['im_len'], 
-                                  gabor_params['reg_len'], 
-                                  gabor_params['surp_len'], 
-                                  subj_params['block_order'], 
-                                  gabor_params['block_len'])
+    # (surprise integrated as well)    
+    orisurps = orisurporder(gabor_params['oris'], 
+                            gabor_params['n_im'], 
+                            gabor_params['im_len'], 
+                            gabor_params['reg_len'], 
+                            gabor_params['surp_len'],
+                            session_params['gab_dur'])
     
-    subj_params['windowpar'] = [fieldsize, deg_per_pix]
-    subj_params['oriparsurps'] = oriparsurps   
-    subj_params['seed'] = seed
-    
-    # save parameters for subject and session under ./config
-    if extrasave:
-        save_session_params('gab', subj_id, sess_id, gabor_params, subj_params)
+    session_params['windowpar'] = [fieldsize, deg_per_pix]
+    session_params['seed'] = seed_info['seed']
             
     elemPar={ # parameters set by ElementArrayStim
             'units': gabor_params['units'],
@@ -606,17 +441,16 @@ def init_run_gabors(window, subj_id, sess_id, seed, extrasave, recordOris, gabor
             }
     
     sweepPar={ # parameters to sweep over (0 is outermost parameter)
-            'OriParSurp': (oriparsurps, 0), # contains (ori in degrees, surp=0 or 1, kappa)
+            'OriSurp': (orisurps, 0), # contains (ori in degrees, surp=0 or 1)
             'PosSizesAll': ([0, 1, 2, 3], 1), # pass sets of positions and sizes
             }
     
     # Create the stimulus array 
-    gabors = OurStims(window, elemPar, fieldsize,
-                          possizes=subj_params['possize'])
+    gabors = OurStims(window, elemPar, fieldsize, orikappa=kap,
+                          possizes=session_params['possize'])
     
     # Add these attributes for the logs
     gabors.gabor_params = gabor_params
-    gabors.subj_params = subj_params
     
     gb = Stimulus(gabors,
                   sweepPar,
@@ -628,12 +462,15 @@ def init_run_gabors(window, subj_id, sess_id, seed, extrasave, recordOris, gabor
                   )
     
     # record attributes from OurStims
-    attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'gabor_params',
-               'initScr', 'possizes', 'autoLog', 'units', 'subj_params', 
-               'last_frame']
+    if recordOris: # potentially large arrays
+        session_params['orisurps'] = orisurps 
+        session_params['orisbyimg'] = gabors.orisByImg
     
-    if recordOris:
-        attribs.extend(['orisByImg']) # potentially large array
+    # add more attribute for the logs
+    gabors.session_params = session_params
+
+    attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'gabor_params',
+               'initScr', 'autoLog', 'units', 'session_params', 'last_frame']
     
     gb.stimParams = {key:gb.stim.__dict__[key] for key in attribs}
     

@@ -7,9 +7,7 @@ Specifically, the stimuli will be:
 Stimuli based on:   https://www.biorxiv.org/content/biorxiv/early/2017/10/03/197608.full.pdf
 http://www.jneurosci.org/content/28/30/7520
 
-To run:
-- For Gabor stimuli: gabor_exp.py
-- For Square stimuli: square_exp.py
+Run: ophys_day.py
 
 Additional scripts:
 - ourstimuli.py - Class used to build gabors and squares.
