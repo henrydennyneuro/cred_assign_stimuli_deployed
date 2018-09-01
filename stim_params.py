@@ -165,7 +165,7 @@ def createseqlen(rng, block_segs, regs, surps):
         else:
             new_reg_block_len = rng.randint(regs[0], regs[1] + 1)
             new_surp_block_len = rng.randint(surps[0], surps[1] + 1)
-        
+ 
         reg_block_len.append(new_reg_block_len)
         surp_block_len.append(new_surp_block_len)
         
@@ -386,7 +386,7 @@ def init_run_squares(window, direc, session_params, recordPos, square_params=SQU
                'initScr', 'autoLog', 'units','actual_fps', 'direc', 
                'session_params', 'last_frame']
     
-    sq.stimParams = {key:sq.stim.__dict__[key] for key in attribs}
+    sq.stim_params = {key:sq.stim.__dict__[key] for key in attribs}
     
     return sq
 
@@ -483,6 +483,6 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'gabor_params',
                'initScr', 'autoLog', 'units', 'session_params', 'last_frame']
     
-    gb.stimParams = {key:gb.stim.__dict__[key] for key in attribs}
+    gb.stim_params = {key:gb.stim.__dict__[key] for key in attribs}
     
     return gb

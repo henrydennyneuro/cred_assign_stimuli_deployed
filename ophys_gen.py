@@ -1,20 +1,24 @@
 """
-This is code to generate and run a 35-minute stimulus for 2P recordings
-for mouse I
-order is: gabors, bricks
+This is code to generate stimuli of the desired length
 
-Mismatches are included. These are every 30-90 seconds, and last 2-4 seconds
-for the bricks, and 3-6 seconds for the Gabors
+For ophys type sessions, mismatches are included. These are every 30-90 seconds,
+and last 2-4 seconds for the bricks, and 3-6 seconds for the Gabors.
+For hab type sessions, no mismatches occur
 
-Everything is randomized for each session for each animals (ordering of stim 
-types (gabors vs bricks), ordering of brick directions (left, right) positions 
-and sizes of Gabors
+Everything is randomized for each session for each animal (ordering of stim 
+types (gabors vs bricks), ordering of brick directions (left, right), 
+positions, sizes and orientations of Gabors, location of bricks, and time
+and duration of mismatches if these occur.
 """
 
-# FOR TESTING
+# FOR QUICK TESTING
 SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
                                    # entering 'hab' will remove any surprises
-                  'session_dur': 117, # total session duration (sec)
+
+                  # 'session_dur' is just used to double check that the
+                  # components add up to the proper session length.
+                  # A message is printed if they do not but no error is thrown.
+                  'session_dur': 117, # expected total session duration (sec)
                   'pre_blank': 5, # blank before stim starts (sec)
                   'post_blank': 5, # blank after all stims end (sec)
                   'inter_blank': 5, # blank between all stims (sec)
@@ -22,6 +26,7 @@ SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
                   'sq_dur': 32, # duration of each brick block (total=2) (sec)
                   }
 
+# For full ophys recording (70 min)
 # SESSION_PARAMS = {'type': 'ophys', # type of session (habituation or ophys)
 #                   'session_dur': 70*60, # total session duration (sec)
 #                   'pre_blank': 30, # blank before stim starts (sec)
@@ -29,7 +34,7 @@ SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
 #                   'inter_blank': 30, # blank between all stims (sec)
 #                   'gab_dur': 34*60, # duration of gabor block (sec)
 #                   'sq_dur': 17*60, # duration of each brick block (total=2) 
-#                                      (sec)
+#                                    #(sec)
 #                  }
 
 import random
@@ -63,7 +68,7 @@ if __name__ == "__main__":
     
     # randomly set a seed for the session and create a dictionary
     SESSION_PARAMS['seed'] = random.choice(range(0, 48000))
-    SESSION_PARAMS['seed'] = 9201 # override by setting seed manually
+    # SESSION_PARAMS['seed'] = # override by setting seed manually
     SESSION_PARAMS['rng'] = np.random.RandomState(SESSION_PARAMS['seed'])
     
     # Create display window
@@ -78,13 +83,13 @@ if __name__ == "__main__":
                2*SESSION_PARAMS['inter_blank'] + SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur']
     if tot_calc != SESSION_PARAMS['session_dur']:
-        print('Session should last {} s, but adds up to {} s.'
+        print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
 
     # initialize the stimuli
-    gb = stim_params.init_run_gabors(window, copy.deepcopy(SESSION_PARAMS), recordOris)
-    sq_left = stim_params.init_run_squares(window, 'left', copy.deepcopy(SESSION_PARAMS), recordPos)
-    sq_right = stim_params.init_run_squares(window, 'right', copy.deepcopy(SESSION_PARAMS), recordPos)
+    gb = stim_params.init_run_gabors(window, SESSION_PARAMS.copy(), recordOris)
+    sq_left = stim_params.init_run_squares(window, 'left', SESSION_PARAMS.copy(), recordPos)
+    sq_right = stim_params.init_run_squares(window, 'right', SESSION_PARAMS.copy(), recordPos)
 
     # initialize display order and times
     stim_order = ['g', 'b']
