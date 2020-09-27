@@ -2,31 +2,32 @@
 ====================================================
 
 - There is one habituation script per day, and it is fully contained (i.e., it does not depend on any other scripts we've written).
-- There are 30 s grayscreen periods at the start and the end of the session, as well as between the 3 stimulus blocks (1 Gabor stimulus block and 2 Brick stimulus blocks).
-- The Gabor stimulus block is about 1/2 of the habituation time, whereas the 2 Brick stimulus blocks are each about 1/4 of the habituation time. The order in which they occur is random for each session and each mouse, other than the fact that the 2 Brick blocks will always follow one another.
-- The 2 Brick stimulus blocks differ as follows: in one block, the Bricks move left (except for mismatches, described below), and in the other block, the Bricks move right. 
+- There are 30 second grayscreen periods at the start and the end of the session, as well as between the 3 stimulus blocks (1 Gabor stimulus block and 2 Brick stimulus blocks).
+- The Gabor stimulus block is about 1/2 of the habituation time, whereas the 2 Brick stimulus blocks are each about 1/4 of the habituation time. The order in which they occur is random for each session and each subject, other than the fact that the 2 Brick blocks will always follow one another.
+- The 2 Brick stimulus blocks differ as follows: in one block, the Bricks move left, and in the other block, the Bricks move right. 
+- None of the habituation stimuli contain any of the “mismatch” or “surprise” stimulus components, as described in the pilot experiment plan.
 - The day numbers are described in accordance with the table circulated by Carol. So the amount of time for each script is:
 (day6, 10mins); (day7, 20mins); (day8, 30mins); (day9, 40mins); (day10, 50mins)
 
 Gabor Stimulus Description
 --------------------------
-- 30 Gabors with random locations in each of the frames (A,B,C,D)
-- Each Gabor has size sampled uniformly from 10-20 vis deg (FWHM); width and height are same
+- 30 Gabors with random locations in each of the frames (A,B,C,D).
+- Each Gabor has size sampled uniformly from 10-20 vis deg (FWHM); width and height are the same.
+- Contrast is 100%.
+- Spatial frequency is 0.04 cycles/deg and phase is 0.25.
+- Gabors come in 4 frames (A,B,C,D), each of which has a different set of positions and sizes for the Gabors.
 - The same set of Gabor locations and sizes is maintained for an entire session, but changes between sessions and animals.
-- Contrast is 100%
-- Spatial frequency is 0.04 cycles/deg
-- Gabors come in 4 frames (A,B,C,D), each of which has a different mean Gabor orientation, and a different set of positions for the Gabors
-- Individual Gabor orientations are randomly drawn from circular Gaussian with mean set to the frame mean, and standard deviation of 0.25 rad.
-- Phases are 0.25 for all Gabors
-- Each frame lasts 0.3 seconds, followed by a blank gray screen.	
-- Sequence is ABCD_ABCD_ABCD_. . ., where “_” is the blank frame
+- Sequence is ABCD_ABCD_ABCD_..., where “_” is the blank grayscreen frame.
+- Each frame lasts 0.3 seconds, and the sequence lasts 1.5 seconds.
+- At each sequence repetition, the mean orientation is either {0, 45, 90, 135} degrees.
+- At each sequence repetition, individual Gabor orientations are randomly drawn from circular Gaussian with mean set to the sequence mean, and standard deviation of 0.25 rad.
 
 Bricks Stimulus Description
 ---------------------------
-- Bricks are 8 deg squares (i.e., 8 on a side)
-- Contrast is 100%
-- They flow L or R at 50 deg/s; this varies between blocks
-- There are 113 bricks generated at a time (depends on the size), chosen to be 0.75*screen_area/brick_area.
+- Bricks are 64 deg squared (i.e., 8 on a side).
+- Contrast is 100%.
+- They flow L or R at 50 deg/s; this varies between blocks.
+- There are 105 bricks generated at a time, chosen to be 0.75*screen_area/brick_area.
 
 Day 6
 -----

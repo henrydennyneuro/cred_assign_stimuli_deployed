@@ -1,9 +1,9 @@
+/*/ 
+!/pilot_scripts/
+!/production_scripts/
+!/camstim/
+
 *.exe
 *.npy
 *.pyc
 *.txt
-
-/camstim/
-/colleen/
-/config/
-/frames/

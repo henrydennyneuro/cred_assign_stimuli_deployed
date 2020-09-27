@@ -8,30 +8,31 @@ OpenScope Credit Assignment Passive Training Stimuli
 - The Bricks stimulus blocks go through the 4 different possibilities from {2 brick sizes}x{2 brick directions}. 
 - (Within the pilot experiments, we will present these same sets of stimulus parameters, to try and pick out the ones that drive the strongest effects.)
 - None of the habituation stimuli contain any of the “mismatch” or “surprise” stimulus components, as described in the pilot experiment plan.
-- The Gabor locations and sizes are the same for all days/mice: the RNG seed for determining the locations and sizes is set to be 1 for all days.
+- The Gabor locations and sizes are the same on each day for all subjects: the RNG seed for determining the locations and sizes is set to be the habituation day number, i.e. 6-11.
 - The day numbers are described in accordance with the table circulated by Carol. So the amount of time for each script is:
 (day6, 10mins); (day7, 20mins); (day8, 30mins); (day9, 40mins); (day10, 50mins); (day11; 60mins).
 - Day 11 is defined as the first habituation day on the OPhys rig.
 
 Gabor Stimulus Description
 --------------------------
-- 30 Gabors with random locations in each of the frames (A,B,C,D)
-- Each Gabor has size sampled uniformly from 10-20 vis deg (FWHM); width and height are same
-- The same set of Gabor locations and sizes is maintained for all animals and days (RNG seed is set to 1)
+- 30 Gabors with random locations in each of the frames (A,B,C,D).
+- Each Gabor has size sampled uniformly from 10-20 vis deg (FWHM); width and height are the same.
 - Contrast is 100%
-- Spatial frequency is 0.04 cycles/deg
+- Spatial frequency is 0.04 cycles/deg and phase is 0.25.
+- The same set of Gabor locations and sizes is maintained for each animal across all days.
 - Gabors come in 4 frames (A,B,C,D), each of which has a different mean Gabor orientation, and a different set of positions for the Gabors
-- Individual Gabor orientations are randomly drawn from circular Gaussian with mean set to the frame mean, and standard deviation of 0.25 or 0.5 rad, depending on the Block
-- Phases are 0.25 for all Gabors
-- Each frame lasts 0.3 seconds, followed by a blank grey screen.	
-- Sequence is ABCD_ABCD_ABCD_. . ., where “_” is the blank frame
+- Gabor locations and sizes are randomly set with a seed corresponding to the habituation day, i.e. 6-11.
+- Sequence is ABCD_ABCD_ABCD_..., where “_” is the blank grayscreen frame.
+- Each frame lasts 0.3 seconds, and the sequence lasts 1.5 seconds.
+- At each sequence repetition, the mean orientation is either {0, 45, 90, 135} degrees.
+- Individual Gabor orientations are randomly drawn from circular Gaussian with mean set to the sequence mean, and standard deviation of 0.25 or 0.5 rad, depending on the block.
 
 Bricks Stimulus Description
 ---------------------------
-- Bricks are 8 or 16 deg squares (e.g., 8 or 16 deg on a side); this varies between blocks
-- Contrast is 100%
-- They flow L or R at 50 deg/s; this varies between blocks
-- There are 28 or 113 bricks generated at a time (depends on the size), chosen to be 0.75*screen_area/brick_area.
+- Bricks are 64 or 256 deg squared (i.e., 8 or 16 deg on a side); this varies between blocks.
+- Contrast is 100%.
+- They flow L or R at 50 deg/s; this varies between blocks.
+- There are 105 or 26 bricks generated at a time, depending on the block's Brick size, chosen to be 0.75*screen_area/brick_area.
 
 Day 6
 -----
