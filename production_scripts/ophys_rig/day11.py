@@ -37,7 +37,7 @@ SESSION_PARAMS = {'type': 'hab', # type of session (hab or ophys)
                   'pre_blank': 30, # blank before stim starts (sec)
                   'post_blank': 30, # blank after all stims end (sec)
                   'inter_blank': 30, # blank between all stims (sec)
-                  'gab_dur': 59*60, # duration of gabor block (sec)
+                  'gab_dur': 29.25*60, # duration of gabor block (total=2) (sec)
                   'sq_dur': 0*60, # duration of each brick block (total=2) (sec)
                   }
 
@@ -304,7 +304,7 @@ class OurStims(ElementArrayStim):
         0, 1, 2, 3 = A, B, C, D.
         4 is set manually below (U)
         """
-        
+
         # AMENDED FOR PRODUCTION V2
         # if it's the D (4th set) of a surprise round, either switch orientation mu
         # and switch positions to U (surp type 1) or switch orientation mu and keep D 
@@ -321,7 +321,7 @@ class OurStims(ElementArrayStim):
             pos = self.possizes[possize_idx][0]
             sizes = self.possizes[possize_idx][1]
             self._orimu = (self._orimu + 90)%360
-
+            
         else:
             pos = self.possizes[combo][0]
             sizes = self.possizes[combo][1]
@@ -774,7 +774,7 @@ def createseqlen(rng, block_segs, regs, surps):
 
     return [reg_block_len, surp_block_len]
 
-def orisurpgenerator(rng, oris, block_segs):
+def orisurpgenerator(rng, oris, block_segs, surp=1): # AMENDED FOR PRODUCTION V2
     """
     Args:
         oris: mean orientations
@@ -782,6 +782,9 @@ def orisurpgenerator(rng, oris, block_segs):
                     and a sublist of surprise set durations, both of equal
                     lengths
     
+    Optional:
+        surp: type of surprise to use (1, 2, "both")
+
     Returns:
         zipped lists, one of mean orientation, and one of surprise value 
         for each image sequence.
@@ -791,9 +794,16 @@ def orisurpgenerator(rng, oris, block_segs):
     n_oris = float(len(oris)) # number of orientations
 
     # preselect surprise types (1: U + 90 or 2: D + 90) # AMENDED FOR PRODUCTION V2
-    surp_types = np.ones(len(block_segs[1])) * 2
-    surp_types[: len(surp_types) // 2] = 1
-    rng.shuffle(surp_types)
+    if surp == "both":
+        surp_types = np.ones(len(block_segs[1])) * 2
+        surp_types[: len(surp_types) // 2] = 1
+        rng.shuffle(surp_types)
+    elif surp == 1:
+        surp_types = np.ones(len(block_segs[1]))
+    elif surp == 2:
+        surp_types = np.ones(len(block_segs[1])) * 2
+    else:
+        raise ValueError("surp value {} not recognized. Should be 1, 2 or 'both'.".format(surp))
 
     orilist = list()
     surplist = list()
@@ -823,7 +833,7 @@ def orisurpgenerator(rng, oris, block_segs):
     return zip(orilist, surplist)
 
 
-def orisurporder(rng, oris, n_im, im_len, reg_len, surp_len, block_len):
+def orisurporder(rng, oris, n_im, im_len, reg_len, surp_len, block_len, surp=1): # AMENDED FOR PRODUCTION V2
     """
     Args:
         oris: orientations
@@ -832,6 +842,9 @@ def orisurporder(rng, oris, n_im, im_len, reg_len, surp_len, block_len):
         reg_len: range of durations of reg seq
         surp_len: range of durations of surp seq
         block_len: duration of the block (single value)
+
+    Optional:
+        surp: type of surprise to use (1, 2, "both")
     
     Returns:
         zipped lists, one of mean orientation, and one of surprise value 
@@ -845,9 +858,9 @@ def orisurporder(rng, oris, n_im, im_len, reg_len, surp_len, block_len):
     # get seq lengths
     block_segs = createseqlen(rng, block_segs, reg_sets, surp_sets)
     
-    # from seq durations get zipped lists, one of oris, one of surp=0 or 1
+    # from seq durations get zipped lists, one of oris, one of surp=0, 1 or 2
     # for each image
-    orisurplist = orisurpgenerator(rng, oris, block_segs)
+    orisurplist = orisurpgenerator(rng, oris, block_segs, surp=surp)
 
     return orisurplist
 
@@ -998,7 +1011,7 @@ def init_run_squares(window, direc, session_params, recordPos, square_params=SQU
     return sq
 
 
-def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS):
+def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS, surp=1): # AMENDED FOR PRODUCTION V2
 
     # get fieldsize in units and deg_per_pix
     fieldsize, deg_per_pix = winVar(window, gabor_params['units'])
@@ -1020,11 +1033,12 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     size_ran = [np.around(x * gabor_modif) for x in size_ran]
     
     # get positions and sizes for each image (A, B, C, D, U)
-    session_params['possize'] = possizearrays(session_params['rng'],
-                                              size_ran, 
-                                              fieldsize, 
-                                              gabor_params['n_gabors'], 
-                                              gabor_params['n_im'])
+    if 'possize' not in session_params.keys():
+        session_params['possize'] = possizearrays(session_params['rng'],
+                                                size_ran, 
+                                                fieldsize, 
+                                                gabor_params['n_gabors'], 
+                                                gabor_params['n_im'])
     
     # check whether it is a habituation session. If so, remove any surprise
     # segments
@@ -1040,7 +1054,8 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
                             gabor_params['im_len'], 
                             gabor_params['reg_len'], 
                             gabor_params['surp_len'],
-                            session_params['gab_dur'])
+                            session_params['gab_dur'],
+                            surp=surp)
     
     session_params['windowpar'] = [fieldsize, deg_per_pix]
             
@@ -1070,6 +1085,7 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     
     # Add these attributes for the logs
     gabors.gabor_params = gabor_params
+    gabors.surp = surp
     
     gb = Stimulus(gabors,
                   sweepPar,
@@ -1088,7 +1104,8 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     gabors.session_params = session_params
 
     attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'gabor_params',
-               'initScr', 'autoLog', 'units', 'session_params', 'last_frame']
+               'initScr', 'autoLog', 'units', 'session_params', 'last_frame', 
+               'surp']
     
     gb.stim_params = {key:gb.stim.__dict__[key] for key in attribs}
     
@@ -1123,9 +1140,9 @@ if __name__ == "__main__":
 
     # check session params add up to correct total time
     # AMENDED FOR PRODUCTION V2
-    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0)
+    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
-               (n_stim - 1)*SESSION_PARAMS['inter_blank'] + SESSION_PARAMS['gab_dur'] + \
+               (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur']
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
@@ -1134,9 +1151,17 @@ if __name__ == "__main__":
     # initialize the stimuli # AMENDED FOR PRODUCTION V2
     stim_order = []
     sq_order = []
+    gab_order = []
     if SESSION_PARAMS['gab_dur'] != 0:
-        gb = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris)
+        gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1) 
+        
+        # share positions and sizes
+        gb_2_session_params = SESSION_PARAMS.copy()
+        gb_2_session_params['possize'] = gb_1.stim_params['session_params']['possize']
+        gb_2 = init_run_gabors(window, gb_2_session_params, recordOris, surp=2)
+        
         stim_order.append('g')
+        gab_order = [1, 2]
     if SESSION_PARAMS['sq_dur'] != 0:
         sq_left = init_run_squares(window, 'left', SESSION_PARAMS.copy(), recordPos)
         sq_right = init_run_squares(window, 'right', SESSION_PARAMS.copy(), recordPos)
@@ -1146,15 +1171,21 @@ if __name__ == "__main__":
     # initialize display order and times # AMENDED FOR PRODUCTION V2
     SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
+    SESSION_PARAMS['rng'].shuffle(gab_order) # in place shuffling
 
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
     for i in stim_order:
         if i == 'g':
-            stimuli.append(gb)
-            gb.set_display_sequence([(start, start+SESSION_PARAMS['gab_dur'])])
-            # update the new starting point for the next stim
-            start += SESSION_PARAMS['gab_dur'] + SESSION_PARAMS['inter_blank'] 
+            for j in gab_order:
+                if j == 1:
+                    stimuli.append(gb_1)
+                    gb_1.set_display_sequence([(start, start+SESSION_PARAMS['gab_dur'])])
+                elif j == 2:
+                    stimuli.append(gb_2)
+                    gb_2.set_display_sequence([(start, start+SESSION_PARAMS['gab_dur'])])
+                # update the new starting point for the next stim
+                start += SESSION_PARAMS['gab_dur'] + SESSION_PARAMS['inter_blank'] 
         elif i == 'b':
             for j in sq_order:
                 if j == 'l':

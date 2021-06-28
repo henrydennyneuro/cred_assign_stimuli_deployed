@@ -5,12 +5,12 @@ This repository contains the original code used to generate the stimuli for the 
 
 The Credit Assignment experiment was conceptualized by [Joel Zylberberg](http://www.jzlab.org/) (York University), [Blake Richards](http://linclab.org/) (McGill University), [Timothy Lillicrap](http://contrastiveconvergence.net/~timothylillicrap/index.php) (DeepMind) and [Yoshua Bengio](https://yoshuabengio.org/) (Mila), and the stimuli were coded by [Colleen Gillon](https://sites.google.com/mila.quebec/linc-lab/team/colleen?authuser=0).
 
-The experiment details, analyses and results are published in [Gillon _et al._, 2021, _bioRxiv_](https://www.biorxiv.org/content/10.1101/2021.01.15.426915v1). 
+The experiment details, analyses and results are published in [Gillon _et al._, 2021, _bioRxiv_](https://www.biorxiv.org/content/10.1101/2021.01.15.426915v2). 
 &nbsp;
 
 ## Stimulus design
 1. Sparse Gabor sequences (adapted from [Homann _et al._, 2017, _bioRxiv_](https://www.biorxiv.org/content/biorxiv/early/2017/10/03/197608.full.pdf))
-2. Optic flow mismatch Bricks (pilot and production v1 only)
+2. Visual flow mismatch ("bricks") (pilot and production v1 only)
 &nbsp;
 
 ## Installation
@@ -61,10 +61,10 @@ e.g., run `python production_scripts/ophys_rig/ophys_record.py`.
 ## Reproduction
 - There are several randomly generated components to the stimuli in each session:  
 > 1) Gabor positions and sizes,  
-> 2) Stimulus order (pilot and production v1 only),  
+> 2) Stimulus order, 
 > 3) Gabor sequence orientations,  
-> 4) Brick positions (pilot and production v1 only),  
-> 5) Surprise sequence onsets and duration.
+> 4) Visual flow square ("brick") positions (pilot and production v1 only),  
+> 5) Unexpected event ("surprise") onsets and duration.
 - **Production stimuli (v2)** can be reproduced using **recorded seed** as the random state is used to generate all 5 random components.
 - **Pilot stimuli** cannot be so easily reproduced as the **recorded seed** (100 or 103, depending on the subject) **only controls the first random component (1)**. All other random components are initialized using unseeded random states.
 - The same display size must be reused during reproduction.
