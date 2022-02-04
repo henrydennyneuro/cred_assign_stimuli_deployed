@@ -1,16 +1,17 @@
-# Original Credit Assignment OpenScope Project Stimulus Generation Scripts
+# Credit Assignment OpenScope Project Deployment Scripts
 
-This repository contains the original code used to generate the stimuli for the **Credit Assignment project**, an [Allen Institute for Brain Science](https://alleninstitute.org/what-we-do/brain-science/) [OpenScope](https://alleninstitute.org/what-we-do/brain-science/news-press/press-releases/openscope-first-shared-observatory-neuroscience) project. 
+This repository contains the stimulus scripts used to generate the stimuli for the **Credit Assignment project**, an [Allen Institute for Brain Science](https://alleninstitute.org/what-we-do/brain-science/) [OpenScope](https://alleninstitute.org/what-we-do/brain-science/research/mindscope-program/openscope/) project. 
 &nbsp;
 
 The Credit Assignment experiment was conceptualized by [Joel Zylberberg](http://www.jzlab.org/) (York University), [Blake Richards](http://linclab.org/) (McGill University), [Timothy Lillicrap](http://contrastiveconvergence.net/~timothylillicrap/index.php) (DeepMind) and [Yoshua Bengio](https://yoshuabengio.org/) (Mila), and the stimuli were coded by [Colleen Gillon](https://sites.google.com/mila.quebec/linc-lab/team/colleen?authuser=0).
 
-The experiment details, analyses and results are published in [Gillon _et al._, 2021, _bioRxiv_](https://www.biorxiv.org/content/10.1101/2021.01.15.426915v2). 
+These scripts **have been updated** since [Gillon _et al._, 2021, _bioRxiv_](https://www.biorxiv.org/content/10.1101/2021.01.15.426915v2). For the exact scripts used in the experiments reported in that paper, see the [commit tagged as `production_v1`](https://github.com/colleenjg/cred_assign_stimuli_deployed/tree/production_v1). 
 &nbsp;
 
+**NOTE:** Whereas _this_ repository contains the **exact scripts** deployed for data collection in the OpenScope pipeline, the [`cred_assign_stimuli`](https://github.com/colleenjg/cred_assign_stimuli) repository contains the same base code, but modified to allow users to conveniently visualize, reproduce and save the stimuli used in [Gillon _et al._, 2021, _bioRxiv_](https://www.biorxiv.org/content/10.1101/2021.01.15.426915v2). It also contains a more detailed description of the stimulus design.  
+
 ## Stimulus design
-1. Sparse Gabor sequences (adapted from [Homann _et al._, 2017, _bioRxiv_](https://www.biorxiv.org/content/biorxiv/early/2017/10/03/197608.full.pdf))
-2. Visual flow mismatch ("bricks") (pilot and production v1 only)
+Sparse Gabor sequences (adapted from [Homann _et al._, 2022, _PNAS_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8812573/))
 &nbsp;
 
 ## Installation
@@ -32,7 +33,7 @@ The experiment details, analyses and results are published in [Gillon _et al._, 
     `conda env create -f cred_assign_stimuli.yml`
 2. Activate the environment.  
     `conda activate cred_assign_stimuli`
-3. Install the AIBS `camstim` package in the environment.  
+3. Install the Allen Institute's `camstim` package in the environment.  
     `pip install camstim/.`
 4. Download and install [`AVbin`](https://avbin.github.io/AVbin/Download.html) for your OS.  
 &nbsp;
@@ -41,31 +42,29 @@ The experiment details, analyses and results are published in [Gillon _et al._, 
 ### `pilot_scripts` : scripts used for the pilot deployment
 - `habituation_rig` : scripts used on the habituation rig. For each habituation day, a different script is used, shared across all subjects,  
 e.g., run `python pilot_scripts/habituation_rig/day7.py`.  
-- `ophys_rig` : scripts used on the optical physiology rig. For each subject, a different script is used,   
-e.g., run `python pilot_scripts/ophys_rig/stim_Mouse3_2p.py`.  
+- `ophys_rig` : scripts used on the optical physiology rig. For each experiment day, a different script is used, shared across all subjects,  
+e.g., run `python pilot_scripts/ophys_rig/ophys_record.py`.  
 &nbsp;
 
 ### `production_scripts` : scripts used for the production deployment
-- `habituation_rig` : scripts used on the habituation rig. For each habituation day, a different script is used, shared across all subjects,  
-e.g., run `python production_scripts/habituation_rig/day7.py`.  
-- `ophys_rig` : scripts used on the optical physiology rig. For each experiment day, a different script is used, shared across all subjects,  
-e.g., run `python production_scripts/ophys_rig/ophys_record.py`.  
+_Not yet created._
 &nbsp;
 
 ## Log files
 - Pickled stimulus presentation logs are typically saved under `user/camstim/output`.
 - Sweep parameters are under a few keys of `['stimuli'][n]`, where `n` is the stimulus number.
-- Stimulus parameters are in the following dictionary: `['stimuli'][0]['stimParams']` or `['stimuli'][0]['stim_params']`.  
+- Stimulus parameters are in dictionaries stored under: `['stimuli'][n]['stim_params']`.  
 &nbsp;
 
 ## Reproduction
 - There are several randomly generated components to the stimuli in each session:  
 > 1) Gabor positions and sizes,  
-> 2) Stimulus order, 
+> 2) Gabor sequence block order, 
 > 3) Gabor sequence orientations,  
-> 4) Visual flow square ("brick") positions (pilot and production v1 only),  
-> 5) Unexpected event ("surprise") onsets and duration.
-- **Production stimuli (v2)** can be reproduced using **recorded seed** as the random state is used to generate all 5 random components.
-- **Pilot stimuli** cannot be so easily reproduced as the **recorded seed** (100 or 103, depending on the subject) **only controls the first random component (1)**. All other random components are initialized using unseeded random states.
+> 4) Unexpected event ("surprise") onsets and duration.
+- The stimuli can be reproduced using the **recorded seed**, as the random state is used to generate all 4 random components.
 - The same display size must be reused during reproduction.
+
+## Code
+Code and documentation (excluding `camstim`) built by Colleen Gillon (colleen _dot_ gillon _at_ mail _dot_ utoronto _dot_ ca).
 
