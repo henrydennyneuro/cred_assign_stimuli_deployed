@@ -37,13 +37,13 @@ SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
                   # A message is printed if they do not but no error is thrown.
                   # AMENDED FOR PRODUCTION V2
                   'session_dur': 70*60, # expected total session duration (sec)
-                  'pre_blank': 30, # blank before stim starts (sec)
+                  'pre_blank': 5, # blank before stim starts (sec)
                   'post_blank': 30, # blank after all stims end (sec)
                   'inter_blank': 30, # blank between all stims (sec)
                   'gab_dur': 34.25*60, # duration of gabor block (total=2) (sec)
+                  'rot_gab_dur': 34.25*60, #34.25*60
                   'sq_dur': 0*60, # duration of each brick block (total=2) (sec)
                   }
-
 
 class OurStims(ElementArrayStim):
     """
@@ -59,6 +59,7 @@ class OurStims(ElementArrayStim):
                  sizeparams=None, # range from which to sample uniformly [min, max]. Height and width sampled separately from same range.
                  possizes=None, # zipped lists of pos and sizes (each same size as nStims) for A, B, C, D, U
                  cyc=None, # number of cycles visible (for Gabors)
+                 rotate = [0], # If object has this attribute, run rotating ctrl gabors
                  newpos=[], # frames at which to reinitialize stimulus positions
                  newori=[0], # frames at which to change stimulus orientations (always include 0)
                  orimus=[0.0], # parameter (mu) to use when setting/changing stimulus orientations in deg
@@ -122,6 +123,7 @@ class OurStims(ElementArrayStim):
                 self._flipdirec = [[y * float(fps) for y in x] for x in self._flipdirec]
                 self._initFlipDirec()
             
+            self._ctrl = True # If True, run rotating ctl gabors
             self._newori = [x * float(fps) for x in newori] # get frames from sec
             self._orimus = orimus
             self._orimu = self._orimus[0]
@@ -313,21 +315,49 @@ class OurStims(ElementArrayStim):
         # and switch positions to U (surp type 1) or switch orientation mu and keep D 
         # positions (surp type 2)
         # note: this is done here because the sweep visits the highest level param last
-        if self._surp != 0 and combo == 3:
-            if self._surp == 1:
-                possize_idx = 4
-            elif self._surp == 2:
-                possize_idx = 3
-            else:
-                raise ValueError("self._surp must be 0, 1 or 2.")
 
-            pos = self.possizes[possize_idx][0]
-            sizes = self.possizes[possize_idx][1]
-            self._orimu = (self._orimu + 90)%360
-            
-        else:
-            pos = self.possizes[combo][0]
-            sizes = self.possizes[combo][1]
+        # Set whether this is a rotating trial or a fixed-mu trial
+
+        #if rotate == 1:
+        #    self.ctrl = True
+        #else:
+        #    self.ctrl = False
+
+        # Determine trial type and rotate mu's accordingly
+
+        if self._ctrl == True: 
+            if self._surp != 0 and combo == 3:
+
+                if self._surp == 1:
+                    possize_idx = 4
+                elif self._surp == 2:
+                    possize_idx = 3
+                else:
+                    raise ValueError("self._surp must be 0, 1 or 2.")
+
+                pos = self.possizes[possize_idx][0]
+                sizes = self.possizes[possize_idx][1]
+                self._orimu = (self._orimu + 180)%360
+            else:
+                pos = self.possizes[combo][0]
+                sizes = self.possizes[combo][1]
+                self._orimu = (self._orimu + combo*90)%360
+        
+        if self._ctrl == False:
+            if self._surp != 0 and combo == 3:
+                if self._surp == 1:
+                    possize_idx = 4
+                elif self._surp == 2:
+                    possize_idx = 3
+                else:
+                    raise ValueError("self._surp must be 0, 1 or 2.")
+
+                pos = self.possizes[possize_idx][0]
+                sizes = self.possizes[possize_idx][1]
+                self._orimu = (self._orimu + 90)%360
+            else:
+                pos = self.possizes[combo][0]
+                sizes = self.possizes[combo][1]
         
         self.setXYs(pos, operation, log)
         self.setSizes(sizes, operation, log)
@@ -832,7 +862,7 @@ def orisurpgenerator(rng, oris, block_segs, surp=1): # AMENDED FOR PRODUCTION V2
         surpadd = np.ones_like(oriadd) * surp_types[i] # keep track of surprise (1 or 2)
         orilist.extend(oriadd)
         surplist.extend(surpadd)
-    
+
     return zip(orilist, surplist)
 
 
@@ -1013,7 +1043,6 @@ def init_run_squares(window, direc, session_params, recordPos, square_params=SQU
     
     return sq
 
-
 def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS, surp=1): # AMENDED FOR PRODUCTION V2
 
     # get fieldsize in units and deg_per_pix
@@ -1089,6 +1118,7 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     # Add these attributes for the logs
     gabors.gabor_params = gabor_params
     gabors.surp = surp
+    gabors._ctrl = False
     
     gb = Stimulus(gabors,
                   sweepPar,
@@ -1114,6 +1144,108 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     
     return gb
 
+def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS, surp=1): # AMENDED FOR PRODUCTION V2
+
+    # get fieldsize in units and deg_per_pix
+    fieldsize, deg_per_pix = winVar(window, gabor_params['units'])
+    
+    # convert values to pixels if necessary
+    if gabor_params['units'] == 'pix':
+        size_ran = [np.around(x/deg_per_pix) for x in gabor_params['size_ran']]
+        sf = gabor_params['sf']*deg_per_pix
+    else:
+        size_ran = gabor_params['size_ran']
+        sf = gabor_params['sf']
+    
+    # get kappa from orientation std
+    kap = 1.0/gabor_params['ori_std']**2
+
+    # size is set as where gauss std=3 on each side (so size=6 std). 
+    # Convert from full-width half-max
+    gabor_modif = 1.0/(2*np.sqrt(2*np.log(2))) * gabor_params['sd']
+    size_ran = [np.around(x * gabor_modif) for x in size_ran]
+    
+    # get positions and sizes for each image (A, B, C, D, U)
+    if 'possize' not in session_params.keys():
+        session_params['possize'] = possizearrays(session_params['rng'],
+                                                size_ran, 
+                                                fieldsize, 
+                                                gabor_params['n_gabors'], 
+                                                gabor_params['n_im'])
+    
+    # check whether it is a habituation session. If so, remove any surprise
+    # segments
+    if session_params['type'] == 'hab':
+        gabor_params['reg_len'] = [session_params['rot_gab_dur'], session_params['rot_gab_dur']]
+        gabor_params['surp_len'] = [0, 0]
+
+    # establish a pseudorandom order of orientations to cycle through
+    # (surprise integrated as well)    
+    orisurps = orisurporder(session_params['rng'],
+                            gabor_params['oris'], 
+                            gabor_params['n_im'], 
+                            gabor_params['im_len'], 
+                            gabor_params['reg_len'], 
+                            gabor_params['surp_len'],
+                            session_params['rot_gab_dur'],
+                            surp=surp)
+    
+    session_params['windowpar'] = [fieldsize, deg_per_pix]
+            
+    elemPar={ # parameters set by ElementArrayStim
+            'units': gabor_params['units'],
+            'nElements': gabor_params['n_gabors'], # number of stimuli on screen
+            'fieldShape': 'sqr',
+            'contrs': 1.0,
+            'phases': gabor_params['phase'],
+            'sfs': sf,
+            'elementTex': 'sin',
+            'elementMask': 'gauss',
+            'texRes': 48,
+            'maskParams': {'sd': gabor_params['sd']},
+            'name': 'gabors',
+            }
+    
+    sweepPar={ # parameters to sweep over (0 is outermost parameter)
+            'OriSurp': (orisurps, 0), # contains (ori in degrees, surp=0, 1 (U) or 2 (D surp))  # AMENDED FOR PRODUCTION V2
+            'PosSizesAll': ([0, 1, 2, 3], 1), # pass sets of positions and sizes
+            }
+
+    list(sweepPar['PosSizesAll'])
+
+    # Create the stimulus array 
+    gabors = OurStims(window, elemPar, fieldsize, orikappa=kap,
+                          possizes=session_params['possize'],
+                          rng=session_params['rng'])
+
+    gabors._ctrl = True
+    
+    # Add these attributes for the logs
+    gabors.gabor_params = gabor_params
+    gabors.surp = surp
+    
+    rgb = Stimulus(gabors,
+                  sweepPar,
+                  sweep_length=gabor_params['im_len'], 
+                  blank_sweeps=gabor_params['n_im'], # present a blank screen after every set of images
+                  start_time=0.0,
+                  runs=1,
+                  )
+    
+    # record attributes from OurStims
+    if recordOris: # potentially large array
+        session_params['orisbyimg'] = gabors.orisByImg
+    
+    # add more attribute for the logs
+    gabors.session_params = session_params
+
+    attribs = ['elemParams', 'fieldSize', 'tex', 'colors', 'gabor_params',
+               'initScr', 'autoLog', 'units', 'session_params', 'last_frame', 
+               'surp']
+    
+    rgb.stim_params = {key:rgb.stim.__dict__[key] for key in attribs}
+    
+    return rgb
     
 if __name__ == "__main__":
     
@@ -1143,10 +1275,10 @@ if __name__ == "__main__":
 
     # check session params add up to correct total time
     # AMENDED FOR PRODUCTION V2
-    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2
+    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + (SESSION_PARAMS['rot_gab_dur'] != 0) * 2
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
-               2*SESSION_PARAMS['sq_dur']
+               2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur']
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1155,6 +1287,7 @@ if __name__ == "__main__":
     stim_order = []
     sq_order = []
     gab_order = []
+    rot_gab_order = []
     if SESSION_PARAMS['gab_dur'] != 0:
         gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
         
@@ -1165,6 +1298,14 @@ if __name__ == "__main__":
         
         stim_order.append('g')
         gab_order = [1, 2]
+    if SESSION_PARAMS['rot_gab_dur'] != 0:
+        rgb_1 = init_rotate_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
+        
+        # share positions and sizes from original Gabors. Keeps possize the same
+        rgb_2 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=2)
+        
+        stim_order.append('rg')
+        rot_gab_order = [1, 2]
     if SESSION_PARAMS['sq_dur'] != 0:
         sq_left = init_run_squares(window, 'left', SESSION_PARAMS.copy(), recordPos)
         sq_right = init_run_squares(window, 'right', SESSION_PARAMS.copy(), recordPos)
@@ -1175,6 +1316,7 @@ if __name__ == "__main__":
     SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(gab_order) # in place shuffling
+    SESSION_PARAMS['rng'].shuffle(rot_gab_order) # in place shuffling
 
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
@@ -1189,6 +1331,16 @@ if __name__ == "__main__":
                     gb_2.set_display_sequence([(start, start+SESSION_PARAMS['gab_dur'])])
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['gab_dur'] + SESSION_PARAMS['inter_blank'] 
+        elif i == 'rg':
+            for j in rot_gab_order:
+                if j == 1:
+                    stimuli.append(rgb_1)
+                    rgb_1.set_display_sequence([(start, start+SESSION_PARAMS['rot_gab_dur'])])
+                elif j == 2:
+                    stimuli.append(rgb_2)
+                    rgb_2.set_display_sequence([(start, start+SESSION_PARAMS['rot_gab_dur'])])
+                # update the new starting point for the next stim
+                start += SESSION_PARAMS['rot_gab_dur'] + SESSION_PARAMS['inter_blank'] 
         elif i == 'b':
             for j in sq_order:
                 if j == 'l':
@@ -1199,7 +1351,7 @@ if __name__ == "__main__":
                     sq_right.set_display_sequence([(start, start+SESSION_PARAMS['sq_dur'])])
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
-        
+
     ss = SweepStim(window,
                    stimuli=stimuli,
                    post_blank_sec=SESSION_PARAMS['post_blank'],
