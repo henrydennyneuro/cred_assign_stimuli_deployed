@@ -30,7 +30,7 @@ Sparse Gabor sequences (adapted from [Homann _et al._, 2022, _PNAS_](https://www
 
 ### Installation with [Anaconda](https://docs.anaconda.com/anaconda/install/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html):
 1. Navigate to repository and install conda environment.  
-    `conda env create -f cred_assign_stimuli.yml`
+    `conda env create -f dendri_coupl_stimuli.yml`
 2. Activate the environment.  
     `conda activate cred_assign_stimuli`
 3. Install the Allen Institute's `camstim` package in the environment.  
