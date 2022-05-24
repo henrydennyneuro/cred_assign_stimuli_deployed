@@ -37,11 +37,11 @@ SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
                   # A message is printed if they do not but no error is thrown.
                   # AMENDED FOR PRODUCTION V2
                   'session_dur': 70*60, # expected total session duration (sec)
-                  'pre_blank': 5, # blank before stim starts (sec)
+                  'pre_blank': 30, # blank before stim starts (sec)
                   'post_blank': 30, # blank after all stims end (sec)
                   'inter_blank': 30, # blank between all stims (sec)
-                  'gab_dur': 34.25*60, # duration of gabor block (total=2) (sec)
-                  'rot_gab_dur': 34.25*60, #34.25*60
+                  'gab_dur': 14.75*60, # duration of gabor block (total=2) (sec)
+                  'rot_gab_dur': 14.75*60, #One block = 34.25*60
                   'sq_dur': 0*60, # duration of each brick block (total=2) (sec)
                   }
 
