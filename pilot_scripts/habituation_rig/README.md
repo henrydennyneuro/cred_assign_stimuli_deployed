@@ -1,5 +1,7 @@
-﻿OpenScope Credit Assignment Passive Training Stimuli
+﻿OpenScope Dendritic Coupling Passive Training Stimuli
 ====================================================
+
+NOTE: THIS NEEDS TO BE UPDATED
 
 - There is one habituation script per day, and it is fully contained (i.e., it does not depend on any other scripts we've written).
 - There are 30 second grayscreen periods at the start and the end of the session, and between stimulus blocks.

@@ -1,9 +1,9 @@
-# Credit Assignment OpenScope Project Deployment Scripts
+# Dendritic Coupling OpenScope Project Deployment Scripts
 
-This repository contains the stimulus scripts used to generate the stimuli for the **Credit Assignment project**, an [Allen Institute for Brain Science](https://alleninstitute.org/what-we-do/brain-science/) [OpenScope](https://alleninstitute.org/what-we-do/brain-science/research/mindscope-program/openscope/) project. 
+This repository contains the stimulus scripts used to generate the stimuli for the **Dendritic Coupling project**, an [Allen Institute for Brain Science](https://alleninstitute.org/what-we-do/brain-science/) [OpenScope](https://alleninstitute.org/what-we-do/brain-science/research/mindscope-program/openscope/) project. 
 &nbsp;
 
-The Credit Assignment experiment was conceptualized by [Joel Zylberberg](http://www.jzlab.org/) (York University), [Blake Richards](http://linclab.org/) (McGill University), [Timothy Lillicrap](http://contrastiveconvergence.net/~timothylillicrap/index.php) (DeepMind) and [Yoshua Bengio](https://yoshuabengio.org/) (Mila), and the stimuli were coded by [Colleen Gillon](https://sites.google.com/mila.quebec/linc-lab/team/colleen?authuser=0).
+The Dendritic Coupling experiment was conceptualized by [Joel Zylberberg](http://www.jzlab.org/) (York University), [Blake Richards](http://linclab.org/) (McGill University), and the stimuli were initially coded by [Colleen Gillon](https://sites.google.com/mila.quebec/linc-lab/team/colleen?authuser=0) and modified by [Henry Denny](https://twitter.com/hdennyneuro).
 
 These scripts **have been updated** since [Gillon _et al._, 2021, _bioRxiv_](https://www.biorxiv.org/content/10.1101/2021.01.15.426915v2). For the exact scripts used in the experiments reported in that paper, see the [commit tagged as `production_v1`](https://github.com/colleenjg/cred_assign_stimuli_deployed/tree/production_v1). 
 &nbsp;
