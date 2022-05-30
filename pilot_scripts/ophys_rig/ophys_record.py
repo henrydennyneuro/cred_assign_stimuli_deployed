@@ -15,6 +15,7 @@ import sys
 import copy
 import itertools
 import time
+import pdb
 
 import numpy as np
 import pickle as pkl
@@ -25,7 +26,7 @@ from psychopy.tools.arraytools import val2array
 from psychopy.tools.attributetools import attributeSetter, setAttribute
 
 # camstim is the Allen Institute stimulus package built on psychopy
-from camstim import SweepStim, Stimulus
+from camstim import SweepStim, Stimulus, MovieStim, VariMovieStim
 from camstim import Window, Warp
 
 
@@ -36,13 +37,14 @@ SESSION_PARAMS = {'type': 'ophys', # type of session (hab or ophys)
                   # components add up to the proper session length.
                   # A message is printed if they do not but no error is thrown.
                   # AMENDED FOR PRODUCTION V2
-                  'session_dur': 70*60, # expected total session duration (sec)
-                  'pre_blank': 30, # blank before stim starts (sec)
+                  'session_dur': (8.50*60)+35, # expected total session duration (sec)
+                  'pre_blank': 5, # blank before stim starts (sec)
                   'post_blank': 30, # blank after all stims end (sec)
                   'inter_blank': 30, # blank between all stims (sec)
-                  'gab_dur': 14.75*60, # duration of gabor block (total=2) (sec)
-                  'rot_gab_dur': 14.75*60, #One block = 34.25*60
+                  'gab_dur': 0*60, # duration of gabor block (total=2) (sec)
+                  'rot_gab_dur': 0*60, #34.25*60
                   'sq_dur': 0*60, # duration of each brick block (total=2) (sec)
+                  'movie_dur': 4.25*60 #duration of movie block (total=2) (sec)
                   }
 
 class OurStims(ElementArrayStim):
@@ -687,6 +689,17 @@ SQUARE_PARAMS = {
                 'fps': 60 # frames per sec, default is 60 in camstim
                 }
 
+MOVIE_PARAMS = {
+                'movie_n': 4, # Number of movies presented
+                'movie_len': 10, # Movie durations in seconds
+                'repeats': 10,
+                'inter_stim_grey': 1, #grey period between movies in seconds 
+                'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
+                'surp_len': [10, 30], # range of durations (sec) for seq of surprise sets
+                'seg_len': 10, # duration (sec) of each segment (somewhat arbitrary) 
+                'vids_per_block': 12, # Number of videos per block 
+                }
+
 
 def winVar(win, units):
     """Returns width and height of the window in units as tuple.
@@ -953,6 +966,40 @@ def fliporder(rng, seg_len, reg_len, surp_len, block_len):
 
     return fliplist
 
+def generatemovies(rawmovie):
+    
+    # Creates th 4 varients of each movie we require
+
+    movie_short = rawmovie[0:300]
+
+    #Create the movie in reverse. We can do this by slicing the first 9 seconds of the loaded movie,
+    #then use the flipud function to fill a new array back-to-front from the slice we selected. 
+
+    movie_reversed = np.flipud(movie_short)
+
+    #Now we will create two movies that switch direction at the 3 second mark. 
+
+    #Forward movie with reverse scrub
+    fw_movie_scrubSeg1 = movie_short[0:100]
+    fw_movie_scrubSeg3 = movie_short[0:100]
+    fw_movie_scrubSeg2 = movie_reversed[200:300]
+    fw_movie_scrub = np.concatenate((fw_movie_scrubSeg1, fw_movie_scrubSeg2, fw_movie_scrubSeg3))
+
+    #Reverse movie with forward scrub
+    bw_movie_scrubSeg1 = movie_reversed[0:100]
+    bw_movie_scrubSeg3 = movie_reversed[0:100]
+    bw_movie_scrubSeg2 = movie_short[200:300]
+    bw_movie_scrub = np.concatenate((bw_movie_scrubSeg1, bw_movie_scrubSeg2, bw_movie_scrubSeg3))
+
+    npymovies = {
+        'fw_movie' : movie_short,
+        'bw_movie' : movie_reversed,
+        'fw_movie_scrub' : fw_movie_scrub,
+        'bw_movie_scrub' : bw_movie_scrub 
+    }
+
+    return npymovies
+
 
 def init_run_squares(window, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
 
@@ -1211,8 +1258,6 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
             'PosSizesAll': ([0, 1, 2, 3], 1), # pass sets of positions and sizes
             }
 
-    list(sweepPar['PosSizesAll'])
-
     # Create the stimulus array 
     gabors = OurStims(window, elemPar, fieldsize, orikappa=kap,
                           possizes=session_params['possize'],
@@ -1247,6 +1292,59 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
     
     return rgb
     
+def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
+    
+    #Load in movie and create variants
+    path = "C:\\Users\\Henry Denny\\Documents\\Richards_lab_Stim_Protocol\\cred_assign_stimuli-main\\natural_movies\\Movie_TOE1.npy"
+    rawmovie = np.load(path)
+    npymovies = generatemovies(rawmovie)
+
+    # Generate blocks. 
+    blocks = [
+        # Start from 1 to skip the one-shot stimulus (1, NUM_STIMULI + 1)
+        random.uniform(0.0, 1.0) for vid in range(movie_params['vids_per_block'])
+        #for repeat in range(movie_params['repeats'])
+        ]
+
+    def distributemovies(score):
+        
+        #This function turns samples from a uniform distribution and turns them into
+        #presentation probabilities. 
+
+        if score < 0.35:
+            return 0
+        elif score >= 0.35 and score < 0.7:
+            return 1
+        elif score >= 0.7 and score < 0.85:
+            return 2
+        else:
+            return 3
+
+    # Use this code if you end up double wrapping your block eg: [[Block][Block]]
+    # propblocks = map(lambda b:map(lambda c: distributemovies(c), b), blocks)
+
+    propblocks = map(distributemovies, blocks)
+
+    mov = { key:
+        VariMovieStim(
+            movie_variable=npymovies[key],
+            window=window,
+            stop_time=9.0,
+            blank_length=1.0,                            
+            frame_length=1.0 / 30.0,
+            size=(1920, 1200),
+            flip_v=True
+        )
+        for key in npymovies
+    }
+
+    return mov, propblocks
+
+    # sweepPar={ # parameters to sweep over (0 is outermost parameter)
+    #         'propblocks': (np.arange(0, movie_params['vids_per_block']), 1), # Sweeps over movie order
+    #         }
+
+
 if __name__ == "__main__":
     
     dist = 15.0
@@ -1267,7 +1365,7 @@ if __name__ == "__main__":
     SESSION_PARAMS['rng'] = np.random.RandomState(SESSION_PARAMS['seed'])
     
     # Create display window
-    window = Window(fullscr=True, # Will return an error due to default size. Ignore.
+    window = Window(fullscr=False, # Will return an error due to default size. Ignore.
                     monitor=monitor,  # Will be set to a gamma calibrated profile by MPE
                     screen=0,
                     warp=Warp.Spherical
@@ -1275,10 +1373,12 @@ if __name__ == "__main__":
 
     # check session params add up to correct total time
     # AMENDED FOR PRODUCTION V2
-    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + (SESSION_PARAMS['rot_gab_dur'] != 0) * 2
+    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + \
+                (SESSION_PARAMS['rot_gab_dur'] != 0) * 2 + (2*SESSION_PARAMS['movie_dur'] != 0)
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
-               2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur']
+               2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
+                2*SESSION_PARAMS['movie_dur']
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1288,6 +1388,7 @@ if __name__ == "__main__":
     sq_order = []
     gab_order = []
     rot_gab_order = []
+    mov_order = []
     if SESSION_PARAMS['gab_dur'] != 0:
         gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
         
@@ -1311,12 +1412,17 @@ if __name__ == "__main__":
         sq_right = init_run_squares(window, 'right', SESSION_PARAMS.copy(), recordPos)
         stim_order.append('b')
         sq_order = ['l', 'r']
-
+    if SESSION_PARAMS['movie_dur'] != 0:
+        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1)
+        stim_order.append('m')
+        mov_order = [1]
+        
     # initialize display order and times # AMENDED FOR PRODUCTION V2
     SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(gab_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(rot_gab_order) # in place shuffling
+    SESSION_PARAMS['rng'].shuffle(mov_order) # in place shuffling
 
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
@@ -1351,6 +1457,23 @@ if __name__ == "__main__":
                     sq_right.set_display_sequence([(start, start+SESSION_PARAMS['sq_dur'])])
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
+        elif i == 'm':
+            for j in propblocks:
+                if j == 0:
+                    stimuli.append(mov['fw_movie'])
+                    #mov.set_display_sequence([(start, start+SESSION_PARAMS['movie_dur'])])
+                elif j == 1:
+                    stimuli.append(mov['bw_movie'])
+                    #mov.set_display_sequence([(start, start+SESSION_PARAMS['movie_dur'])])
+                elif j == 2:
+                    stimuli.append(mov['fw_movie_scrub'])
+                    #mov.set_display_sequence([(start, start+SESSION_PARAMS['movie_dur'])])
+                elif j == 3:
+                    stimuli.append(mov['bw_movie_scrub'])
+                    #mov.set_display_sequence([(start, start+SESSION_PARAMS['movie_dur'])])
+                # update the new starting point for the next stim
+                start += SESSION_PARAMS['movie_dur'] + SESSION_PARAMS['inter_blank'] 
+        
 
     ss = SweepStim(window,
                    stimuli=stimuli,
