@@ -645,7 +645,7 @@ Parameters are set here.
 
 GABOR_PARAMS = {
                 ### PARAMETERS TO SET
-                'n_gabors': 30,
+                'n_gabors': 45,
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
@@ -685,18 +685,25 @@ SQUARE_PARAMS = {
                 }
 
 
-def winVar(win, units):
+def winVar(win, units, small_angle_approx=True):
     """Returns width and height of the window in units as tuple.
     Takes window and units.
+    Uses small angle approximation, by default # AMENDED FOR PILOT V2
     """
     dist = win.monitor.getDistance()
     width = win.monitor.getWidth()
     
     # get values to convert deg to pixels
-    deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
-    deg_per_pix = deg_wid/win.size[0] # about 0.07
+    if small_angle_approx:
+        pix_wid = float(width)/win.size[0]
+        deg_per_pix = np.rad2deg(pix_wid/dist) # about 0.10 if width is 1920
+    else:
+        deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
+        deg_per_pix = deg_wid/win.size[0] # about 0.06 if width is 1920
     
     if units == 'deg':
+        if small_angle_approx:
+            raise NotImplementedError('fieldSize in degrees is ill-defined, if using small angle approximation.')
         deg_hei = deg_per_pix * win.size[1] # about 67
         # Something is wrong with deg as this does not fill screen
         init_wid = deg_wid
@@ -712,7 +719,7 @@ def winVar(win, units):
         raise ValueError('Only implemented for deg or pixel units so far.')
     
     return fieldSize, deg_per_pix
-        
+
 def posarray(rng, fieldsize, n_elem, n_im):
     """Returns 2D array of positions in field.
     Takes a seeded numpy random number generator, 
