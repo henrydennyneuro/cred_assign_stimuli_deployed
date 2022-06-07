@@ -6,7 +6,11 @@ Everything is randomized for each session for each animal (positions, sizes and
 orientations of Gabors).
 """
 import camstim
+<<<<<<< HEAD
 from camstim import Stimulus, SweepStim, Foraging, Window, Warp
+=======
+from camstim import Stimulus, SweepStim, Foraging, Window, Warp, VariMovieStim
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 
 import random
 import os
@@ -19,6 +23,11 @@ import yaml
 import numpy as np
 import pickle as pkl
 
+<<<<<<< HEAD
+=======
+from glob import glob
+
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 from psychopy import monitors, event, logging, core
 from psychopy.visual import ElementArrayStim
 from psychopy.tools.arraytools import val2array
@@ -629,7 +638,11 @@ Parameters are set here.
 
 GABOR_PARAMS = {
                 ### PARAMETERS TO SET
+<<<<<<< HEAD
+                'n_gabors': 45,
+=======
                 'n_gabors': 30,
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
@@ -668,19 +681,49 @@ SQUARE_PARAMS = {
                 'fps': 60 # frames per sec, default is 60 in camstim
                 }
 
+<<<<<<< HEAD
+
+def winVar(win, units, small_angle_approx=True):
+    """Returns width and height of the window in units as tuple.
+    Takes window and units.
+    Uses small angle approximation, by default # AMENDED FOR PILOT V2
+=======
+MOVIE_PARAMS = {
+                'movie_n': 3, # Number of movies presented
+                'movie_len': 10, # Movie durations in seconds
+                'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
+                'surp_len': [10, 30], # range of durations (sec) for seq of surprise sets
+                'seg_len': 10, # duration (sec) of each segment (somewhat arbitrary) 
+                'vids_per_block': 12, # Number of videos per block 
+                }
+
 
 def winVar(win, units):
     """Returns width and height of the window in units as tuple.
     Takes window and units.
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     """
     dist = win.monitor.getDistance()
     width = win.monitor.getWidth()
     
     # get values to convert deg to pixels
+<<<<<<< HEAD
+    if small_angle_approx:
+        pix_wid = float(width)/win.size[0]
+        deg_per_pix = np.rad2deg(pix_wid/dist) # about 0.10 if width is 1920
+    else:
+        deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
+        deg_per_pix = deg_wid/win.size[0] # about 0.06 if width is 1920
+    
+    if units == 'deg':
+        if small_angle_approx:
+            raise NotImplementedError('fieldSize in degrees is ill-defined, if using small angle approximation.')
+=======
     deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
     deg_per_pix = deg_wid/win.size[0] # about 0.07
     
     if units == 'deg':
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
         deg_hei = deg_per_pix * win.size[1] # about 67
         # Something is wrong with deg as this does not fill screen
         init_wid = deg_wid
@@ -696,7 +739,11 @@ def winVar(win, units):
         raise ValueError('Only implemented for deg or pixel units so far.')
     
     return fieldSize, deg_per_pix
+<<<<<<< HEAD
+
+=======
         
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 def posarray(rng, fieldsize, n_elem, n_im):
     """Returns 2D array of positions in field.
     Takes a seeded numpy random number generator, 
@@ -931,6 +978,66 @@ def fliporder(rng, seg_len, reg_len, surp_len, block_len):
 
     return fliplist
 
+<<<<<<< HEAD
+=======
+def generatemovies(rawmovie):
+    
+    # Creates the 4 varients of each movie we require
+
+    movie_short = rawmovie[0:270]
+
+    #Create the movie in reverse. We can do this by slicing the first 9 seconds of the loaded movie,
+    #then use the flipud function to fill a new array back-to-front from the slice we selected. 
+
+    movie_reversed = np.flipud(movie_short)
+
+    #Now we will create two movies that switch direction at the 3 second mark. 
+
+    #Forward movie with reverse scrub
+    fw_movie_scrubSeg1 = movie_short[0:90]
+    fw_movie_scrubSeg3 = movie_short[0:90]
+    fw_movie_scrubSeg2 = movie_reversed[180:270]
+    fw_movie_scrub = np.concatenate((fw_movie_scrubSeg1, fw_movie_scrubSeg2, fw_movie_scrubSeg3))
+
+    #Reverse movie with forward scrub
+    bw_movie_scrubSeg1 = movie_reversed[0:90]
+    bw_movie_scrubSeg3 = movie_reversed[0:90]
+    bw_movie_scrubSeg2 = movie_short[180:270]
+    bw_movie_scrub = np.concatenate((bw_movie_scrubSeg1, bw_movie_scrubSeg2, bw_movie_scrubSeg3))
+
+    npymovies = {
+        'fw_movie' : movie_short,
+        'bw_movie' : movie_reversed,
+        'fw_movie_scrub' : fw_movie_scrub,
+        'bw_movie_scrub' : bw_movie_scrub 
+    }
+
+    return npymovies
+
+def distributemoviesctl(score):
+        
+    #This function turns samples from a uniform distribution and turns them into
+    #presentation probabilities. 
+    if score < 0.5:
+        return 0
+    else:
+        return 1
+
+def distributemoviesexp(score):
+        
+    #This function turns samples from a uniform distribution and turns them into
+    #presentation probabilities. 
+
+    if score < 0.30:
+        return 0
+    elif score >= 0.30 and score < 0.60:
+        return 1
+    elif score >= 0.60 and score < 0.80:
+        return 2
+    else:
+        return 3
+
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 def init_run_squares(window, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
 
     # get fieldsize in units and deg_per_pix
@@ -1232,6 +1339,80 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
     rgb.stim_params = {key:rgb.stim.__dict__[key] for key in attribs}
     
     return rgb
+<<<<<<< HEAD
+=======
+
+def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
+    
+    #Find movie locations and store paths in variable
+    path = ".\\natural_movies\\"
+    stimulus_path_pattern = os.path.join(path, '*.npy')
+    stimulus_paths = sorted(
+        map(os.path.abspath, glob(stimulus_path_pattern))
+    )
+
+    # Prepare destinations for returning variables
+    nameindex = -1
+    mov = {} # Contains the MovieStim objects of each submovie for each movie
+    propblocks = {}
+
+    # Create the movie subtypes for each movie and determine playback order for each 2min
+    # block in propblocks library
+    for j, stimulus_path in enumerate(stimulus_paths):
+        nameindex = nameindex + 1 #Counts movie index
+        moviename = 'Movie'+str(nameindex)
+        rawmovie = np.load(stimulus_path) # Loads original movie
+        npymovies = generatemovies(rawmovie) # Creates 4 subtype
+
+        # Generate blocks by pulling from a uniform distribution. We can then assign
+        # % chances for each video subtype in the "distributemovies" functions
+        # Ctrl blocks have no "surprise" movies.
+        ctlblocks = np.empty(((movie_params['vids_per_block'])/3)+1)
+        for i in range(((movie_params['vids_per_block'])/3)+1):
+            ctlblocks[i] = np.random.uniform(0.0, 1.0)
+        
+        # Exp blocks have 5 presentations w/ 40% chance of surprise and 2 with 
+        # guarenteed surprises
+        expblocks = np.empty(((movie_params['vids_per_block'])/3)+1)
+        for i in range(((movie_params['vids_per_block'])/3)+1):
+            expblocks[i] = np.random.uniform(0.0, 1.0)
+        
+        # convert probabilities into indexible integers
+        propblocksctl = map(distributemoviesctl, ctlblocks)
+        propblocksexp = map(distributemoviesexp, expblocks)
+        propblocks[moviename] = np.concatenate((propblocksctl, propblocksexp, [2], [3]))
+
+        # Count the number of times each movie is presented per 2-min block
+        blockcount = {
+            'fw_movie': np.count_nonzero(propblocks[moviename] == 0),
+            'bw_movie': np.count_nonzero(propblocks[moviename] == 1),
+            'fw_movie_scrub': np.count_nonzero(propblocks[moviename] == 2),
+            'bw_movie_scrub': np.count_nonzero(propblocks[moviename] == 3)
+        }
+
+        # Provide VariMovieStim with the number of runs required for each sub-movie
+        presentations = { key:
+            blockcount[key]
+            for key in npymovies
+        }
+
+        # Create the MovieStim objects
+        mov[moviename] = { key:
+            VariMovieStim(
+                movie_variable=npymovies[key],
+                window=window,
+                stop_time=9.0,
+                blank_length=0,                            
+                frame_length=1.0 / 30,
+                size=(1920, 1080),
+                runs=presentations[key],
+                flip_v=True
+            )
+            for key in npymovies
+        }
+
+    return mov, propblocks
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     
 if __name__ == "__main__":
     # This part load parameters from mtrain
@@ -1255,7 +1436,13 @@ if __name__ == "__main__":
     SESSION_PARAMS_gab_dur = json_params.get('gab_dur', 12.25*60)
     SESSION_PARAMS_rot_gab_dur = json_params.get('rot_gab_dur', 12.25*60)
     SESSION_PARAMS_sq_dur = json_params.get('sq_dur', 0*60)
+<<<<<<< HEAD
     
+=======
+    SESSION_PARAMS_movie_dur = json_params.get('movie_dur', 10*60)
+    SESSION_PARAMS_movie_blocks = json_params.get('movie_blocks', 3)
+
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     # mtrain should be providing : Gamma1.Luminance50
     monitor_name = json_params.get('monitor_name', "testMonitor")
 
@@ -1277,6 +1464,11 @@ if __name__ == "__main__":
                   'gab_dur': SESSION_PARAMS_gab_dur, # duration of gabor block (total=2) (sec)
                   'rot_gab_dur': SESSION_PARAMS_rot_gab_dur, #34.25*60
                   'sq_dur': SESSION_PARAMS_sq_dur, # duration of each brick block (total=2) (sec)
+<<<<<<< HEAD
+=======
+                  'movie_dur': 10*60, #duration of movie block (total=1) (sec)
+                  'movie_blocks': 3, #Number of movie blocks, each = movie_dur (sec)
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
                   }
 
     # Record orientations of gabors at each sweep (LEAVE AS TRUE)
@@ -1305,10 +1497,20 @@ if __name__ == "__main__":
 
     # check session params add up to correct total time
     # AMENDED FOR PRODUCTION V2
+<<<<<<< HEAD
     n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + (SESSION_PARAMS['rot_gab_dur'] != 0) * 2
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur']
+=======
+    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + \
+                (SESSION_PARAMS['rot_gab_dur'] != 0) * 2 + (SESSION_PARAMS['movie_blocks'] != 0) #\
+                #* SESSION_PARAMS['movie_dur']
+    tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
+               (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
+               2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
+                MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block']
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1318,6 +1520,11 @@ if __name__ == "__main__":
     sq_order = []
     gab_order = []
     rot_gab_order = []
+<<<<<<< HEAD
+=======
+    mov_order = []
+
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     if SESSION_PARAMS['gab_dur'] != 0:
         gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
         
@@ -1341,15 +1548,41 @@ if __name__ == "__main__":
         sq_right = init_run_squares(window, 'right', SESSION_PARAMS.copy(), recordPos)
         stim_order.append('b')
         sq_order = ['l', 'r']
+<<<<<<< HEAD
 
+=======
+    if SESSION_PARAMS['movie_dur'] != 0:
+        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1)
+        for i in np.arange(SESSION_PARAMS['movie_blocks']):
+            stim_order.append('m')
+        mov_order = np.arange(MOVIE_PARAMS['movie_n'])
+    
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     # initialize display order and times # AMENDED FOR PRODUCTION V2
     SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(gab_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(rot_gab_order) # in place shuffling
+<<<<<<< HEAD
 
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
+=======
+    
+    start = SESSION_PARAMS['pre_blank'] # initial blank
+    stimuli = []
+    
+    fwdisplayorder = {}
+    bwdisplayorder = {}
+    fwsdisplayorder = {}
+    bwsdisplayorder = {}
+    for i in range(MOVIE_PARAMS['movie_n']):
+        fwdisplayorder['Movie'+str(i)] = []
+        bwdisplayorder['Movie'+str(i)] = []
+        fwsdisplayorder['Movie'+str(i)] = []
+        bwsdisplayorder['Movie'+str(i)] = []
+
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     for i in stim_order:
         if i == 'g':
             for j in gab_order:
@@ -1381,6 +1614,34 @@ if __name__ == "__main__":
                     sq_right.set_display_sequence([(start, start+SESSION_PARAMS['sq_dur'])])
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
+<<<<<<< HEAD
+=======
+        elif i == 'm':
+            for ii in mov_order:
+                for j in propblocks['Movie'+str(ii)]: 
+                    if j == 0:
+                        fwdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
+                        print(fwdisplayorder)
+                    elif j == 1:
+                        bwdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
+                    elif j == 2:
+                        fwsdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
+                    elif j == 3:
+                        bwsdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
+                    # update the new starting point for the next stim
+                    start += MOVIE_PARAMS['movie_len'] + SESSION_PARAMS['inter_blank'] 
+            for i in range(MOVIE_PARAMS['movie_n']):
+                mov['Movie'+str(i)]['fw_movie'].set_display_sequence(fwdisplayorder['Movie'+str(i)])
+                mov['Movie'+str(i)]['bw_movie'].set_display_sequence(bwdisplayorder['Movie'+str(i)])
+                mov['Movie'+str(i)]['fw_movie_scrub'].set_display_sequence(fwsdisplayorder['Movie'+str(i)])
+                mov['Movie'+str(i)]['bw_movie_scrub'].set_display_sequence(bwsdisplayorder['Movie'+str(i)])
+
+                stimuli.append(mov['Movie'+str(i)]['fw_movie'])
+                stimuli.append(mov['Movie'+str(i)]['bw_movie'])
+                stimuli.append(mov['Movie'+str(i)]['fw_movie_scrub'])
+                stimuli.append(mov['Movie'+str(i)]['bw_movie_scrub'])
+        start += SESSION_PARAMS['inter_blank']
+>>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 
     ss = SweepStim(window,
                    stimuli=stimuli,
