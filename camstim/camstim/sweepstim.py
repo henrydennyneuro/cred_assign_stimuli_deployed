@@ -539,6 +539,98 @@ class MovieStim(Stimulus):
 
         return movie_data
 
+class VariMovieStim(Stimulus):
+    """
+    A movie stimulus designed for playing Numpy uint8 movies of arbitrary
+        size/resolution.
+    """
+    def __init__(self,
+                 movie_variable,
+                 window,
+                 frame_length,
+                 size=(640,480),
+                 pos=(0,0),
+                 start_time=0.0,
+                 stop_time=None,
+                 blank_length=0,
+                 blank_sweeps=0,
+                 runs=1,
+                 shuffle=False,
+                 fps=60.0,
+                 flip_v=False,
+                 flip_h=False,
+                 interpolate=False,
+                 ):
+
+        self.movie_variable = movie_variable
+        self.frame_length = frame_length
+
+        movie_data = self.movie_variable
+
+        psychopy_stimulus = ImageStimNumpyuByte(window,
+                                                image=movie_data[0],
+                                                size=size,
+                                                pos=pos,
+                                                units='pix',
+                                                flipVert=flip_v,
+                                                flipHoriz=flip_h,
+                                                interpolate=interpolate)
+        sweep_params = {
+            'ReplaceImage': (movie_data, 0),
+        }
+        super(VariMovieStim, self).__init__(psychopy_stimulus,
+                                        sweep_params,
+                                        sweep_length=frame_length,
+                                        start_time=start_time,
+                                        stop_time=stop_time,
+                                        blank_length=blank_length,
+                                        blank_sweeps=blank_sweeps,
+                                        runs=runs,
+                                        shuffle=shuffle,
+                                        fps=fps,
+                                        save_sweep_table=False)
+
+    def _local_copy(self, source):
+        """
+        Creates a local copy of a movie.
+        """
+        filename = os.path.basename(source)
+        local_dir = os.path.join(CAMSTIM_DIR, "movies")
+        check_dirs(local_dir)
+        local_path = os.path.join(local_dir, filename)
+        if os.path.isfile(local_path):
+            print("Movie file already exists locally @ {}".format(local_path))
+        else:
+            print("Movie not saved locally, copying...")
+            shutil.copy(source, local_path)
+            print("... Done!")
+        return local_path
+
+    def load_movie(self, path):
+        """
+        Loads a movie from a specified path.  Currently only supports .npy files.
+        """
+        if path[-3:] == "npy":
+            return self.load_numpy_movie(path)
+        else:
+            raise IOError("Incorrect movie file type.")
+
+    def load_numpy_movie(self, path):
+        """
+        Loads a numpy movie.  Ensures that it is read as a contiguous array and
+            three dimensional.
+        """
+        self.movie_local_path = self._local_copy(path)
+        movie_data = np.ascontiguousarray(np.load(self.movie_local_path))
+
+        # check shape/type
+        if movie_data.ndim != 3:
+            raise ValueError("Movie must have 3 dimenstions: (t, y, x))")
+        if not movie_data.dtype in [np.uint8, np.ubyte]:
+            raise ValueError("Movie must be dtype numpy.uint8")
+
+        return movie_data
+
 class NaturalScenes(Stimulus):
     """
     Modified version of Stimulus class for natural scenes.  Has special sweep
