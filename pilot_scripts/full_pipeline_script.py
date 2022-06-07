@@ -6,11 +6,7 @@ Everything is randomized for each session for each animal (positions, sizes and
 orientations of Gabors).
 """
 import camstim
-<<<<<<< HEAD
 from camstim import Stimulus, SweepStim, Foraging, Window, Warp
-=======
-from camstim import Stimulus, SweepStim, Foraging, Window, Warp, VariMovieStim
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 
 import random
 import os
@@ -23,11 +19,8 @@ import yaml
 import numpy as np
 import pickle as pkl
 
-<<<<<<< HEAD
-=======
 from glob import glob
 
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 from psychopy import monitors, event, logging, core
 from psychopy.visual import ElementArrayStim
 from psychopy.tools.arraytools import val2array
@@ -35,6 +28,99 @@ from psychopy.tools.attributetools import attributeSetter, setAttribute
 
 import argparse
 
+
+class VariMovieStim(Stimulus):
+    """
+    A movie stimulus designed for playing Numpy uint8 movies of arbitrary
+        size/resolution.
+    """
+    def __init__(self,
+                 movie_variable,
+                 window,
+                 frame_length,
+                 size=(640,480),
+                 pos=(0,0),
+                 start_time=0.0,
+                 stop_time=None,
+                 blank_length=0,
+                 blank_sweeps=0,
+                 runs=1,
+                 shuffle=False,
+                 fps=60.0,
+                 flip_v=False,
+                 flip_h=False,
+                 interpolate=False,
+                 ):
+
+        self.movie_variable = movie_variable
+        self.frame_length = frame_length
+
+        movie_data = self.movie_variable
+
+        psychopy_stimulus = ImageStimNumpyuByte(window,
+                                                image=movie_data[0],
+                                                size=size,
+                                                pos=pos,
+                                                units='pix',
+                                                flipVert=flip_v,
+                                                flipHoriz=flip_h,
+                                                interpolate=interpolate)
+        sweep_params = {
+            'ReplaceImage': (movie_data, 0),
+        }
+        super(VariMovieStim, self).__init__(psychopy_stimulus,
+                                        sweep_params,
+                                        sweep_length=frame_length,
+                                        start_time=start_time,
+                                        stop_time=stop_time,
+                                        blank_length=blank_length,
+                                        blank_sweeps=blank_sweeps,
+                                        runs=runs,
+                                        shuffle=shuffle,
+                                        fps=fps,
+                                        save_sweep_table=False)
+
+    def _local_copy(self, source):
+        """
+        Creates a local copy of a movie.
+        """
+        filename = os.path.basename(source)
+        local_dir = os.path.join(CAMSTIM_DIR, "movies")
+        check_dirs(local_dir)
+        local_path = os.path.join(local_dir, filename)
+        if os.path.isfile(local_path):
+            print("Movie file already exists locally @ {}".format(local_path))
+        else:
+            print("Movie not saved locally, copying...")
+            shutil.copy(source, local_path)
+            print("... Done!")
+        return local_path
+
+    def load_movie(self, path):
+        """
+        Loads a movie from a specified path.  Currently only supports .npy files.
+        """
+        if path[-3:] == "npy":
+            return self.load_numpy_movie(path)
+        else:
+            raise IOError("Incorrect movie file type.")
+
+    def load_numpy_movie(self, path):
+        """
+        Loads a numpy movie.  Ensures that it is read as a contiguous array and
+            three dimensional.
+        """
+        self.movie_local_path = self._local_copy(path)
+        movie_data = np.ascontiguousarray(np.load(self.movie_local_path))
+
+        # check shape/type
+        if movie_data.ndim != 3:
+            raise ValueError("Movie must have 3 dimenstions: (t, y, x))")
+        if not movie_data.dtype in [np.uint8, np.ubyte]:
+            raise ValueError("Movie must be dtype numpy.uint8")
+
+        return movie_data
+    
 
 class OurStims(ElementArrayStim):
     """
@@ -638,11 +724,7 @@ Parameters are set here.
 
 GABOR_PARAMS = {
                 ### PARAMETERS TO SET
-<<<<<<< HEAD
-                'n_gabors': 45,
-=======
                 'n_gabors': 30,
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
@@ -681,13 +763,6 @@ SQUARE_PARAMS = {
                 'fps': 60 # frames per sec, default is 60 in camstim
                 }
 
-<<<<<<< HEAD
-
-def winVar(win, units, small_angle_approx=True):
-    """Returns width and height of the window in units as tuple.
-    Takes window and units.
-    Uses small angle approximation, by default # AMENDED FOR PILOT V2
-=======
 MOVIE_PARAMS = {
                 'movie_n': 3, # Number of movies presented
                 'movie_len': 10, # Movie durations in seconds
@@ -701,29 +776,15 @@ MOVIE_PARAMS = {
 def winVar(win, units):
     """Returns width and height of the window in units as tuple.
     Takes window and units.
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     """
     dist = win.monitor.getDistance()
     width = win.monitor.getWidth()
     
     # get values to convert deg to pixels
-<<<<<<< HEAD
-    if small_angle_approx:
-        pix_wid = float(width)/win.size[0]
-        deg_per_pix = np.rad2deg(pix_wid/dist) # about 0.10 if width is 1920
-    else:
-        deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
-        deg_per_pix = deg_wid/win.size[0] # about 0.06 if width is 1920
-    
-    if units == 'deg':
-        if small_angle_approx:
-            raise NotImplementedError('fieldSize in degrees is ill-defined, if using small angle approximation.')
-=======
     deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
     deg_per_pix = deg_wid/win.size[0] # about 0.07
     
     if units == 'deg':
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
         deg_hei = deg_per_pix * win.size[1] # about 67
         # Something is wrong with deg as this does not fill screen
         init_wid = deg_wid
@@ -739,11 +800,7 @@ def winVar(win, units):
         raise ValueError('Only implemented for deg or pixel units so far.')
     
     return fieldSize, deg_per_pix
-<<<<<<< HEAD
-
-=======
         
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 def posarray(rng, fieldsize, n_elem, n_im):
     """Returns 2D array of positions in field.
     Takes a seeded numpy random number generator, 
@@ -978,8 +1035,6 @@ def fliporder(rng, seg_len, reg_len, surp_len, block_len):
 
     return fliplist
 
-<<<<<<< HEAD
-=======
 def generatemovies(rawmovie):
     
     # Creates the 4 varients of each movie we require
@@ -1037,7 +1092,6 @@ def distributemoviesexp(score):
     else:
         return 3
 
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 def init_run_squares(window, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
 
     # get fieldsize in units and deg_per_pix
@@ -1339,8 +1393,6 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
     rgb.stim_params = {key:rgb.stim.__dict__[key] for key in attribs}
     
     return rgb
-<<<<<<< HEAD
-=======
 
 def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
     
@@ -1412,7 +1464,6 @@ def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
         }
 
     return mov, propblocks
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     
 if __name__ == "__main__":
     # This part load parameters from mtrain
@@ -1436,13 +1487,9 @@ if __name__ == "__main__":
     SESSION_PARAMS_gab_dur = json_params.get('gab_dur', 12.25*60)
     SESSION_PARAMS_rot_gab_dur = json_params.get('rot_gab_dur', 12.25*60)
     SESSION_PARAMS_sq_dur = json_params.get('sq_dur', 0*60)
-<<<<<<< HEAD
-    
-=======
     SESSION_PARAMS_movie_dur = json_params.get('movie_dur', 10*60)
     SESSION_PARAMS_movie_blocks = json_params.get('movie_blocks', 3)
 
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     # mtrain should be providing : Gamma1.Luminance50
     monitor_name = json_params.get('monitor_name', "testMonitor")
 
@@ -1464,11 +1511,8 @@ if __name__ == "__main__":
                   'gab_dur': SESSION_PARAMS_gab_dur, # duration of gabor block (total=2) (sec)
                   'rot_gab_dur': SESSION_PARAMS_rot_gab_dur, #34.25*60
                   'sq_dur': SESSION_PARAMS_sq_dur, # duration of each brick block (total=2) (sec)
-<<<<<<< HEAD
-=======
-                  'movie_dur': 10*60, #duration of movie block (total=1) (sec)
-                  'movie_blocks': 3, #Number of movie blocks, each = movie_dur (sec)
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
+                  'movie_dur': SESSION_PARAMS_movie_dur, #duration of movie block (total=1) (sec)
+                  'movie_blocks': SESSION_PARAMS_movie_blocks, #Number of movie blocks, each = movie_dur (sec)
                   }
 
     # Record orientations of gabors at each sweep (LEAVE AS TRUE)
@@ -1497,12 +1541,6 @@ if __name__ == "__main__":
 
     # check session params add up to correct total time
     # AMENDED FOR PRODUCTION V2
-<<<<<<< HEAD
-    n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + (SESSION_PARAMS['rot_gab_dur'] != 0) * 2
-    tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
-               (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
-               2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur']
-=======
     n_stim = (SESSION_PARAMS['sq_dur'] != 0) * 2 + (SESSION_PARAMS['gab_dur'] != 0) * 2 + \
                 (SESSION_PARAMS['rot_gab_dur'] != 0) * 2 + (SESSION_PARAMS['movie_blocks'] != 0) #\
                 #* SESSION_PARAMS['movie_dur']
@@ -1510,7 +1548,6 @@ if __name__ == "__main__":
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
                 MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block']
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1520,11 +1557,8 @@ if __name__ == "__main__":
     sq_order = []
     gab_order = []
     rot_gab_order = []
-<<<<<<< HEAD
-=======
     mov_order = []
 
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     if SESSION_PARAMS['gab_dur'] != 0:
         gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
         
@@ -1548,26 +1582,17 @@ if __name__ == "__main__":
         sq_right = init_run_squares(window, 'right', SESSION_PARAMS.copy(), recordPos)
         stim_order.append('b')
         sq_order = ['l', 'r']
-<<<<<<< HEAD
-
-=======
     if SESSION_PARAMS['movie_dur'] != 0:
         mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1)
         for i in np.arange(SESSION_PARAMS['movie_blocks']):
             stim_order.append('m')
         mov_order = np.arange(MOVIE_PARAMS['movie_n'])
     
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     # initialize display order and times # AMENDED FOR PRODUCTION V2
     SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(gab_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(rot_gab_order) # in place shuffling
-<<<<<<< HEAD
-
-    start = SESSION_PARAMS['pre_blank'] # initial blank
-    stimuli = []
-=======
     
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
@@ -1582,7 +1607,6 @@ if __name__ == "__main__":
         fwsdisplayorder['Movie'+str(i)] = []
         bwsdisplayorder['Movie'+str(i)] = []
 
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
     for i in stim_order:
         if i == 'g':
             for j in gab_order:
@@ -1614,8 +1638,6 @@ if __name__ == "__main__":
                     sq_right.set_display_sequence([(start, start+SESSION_PARAMS['sq_dur'])])
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
-<<<<<<< HEAD
-=======
         elif i == 'm':
             for ii in mov_order:
                 for j in propblocks['Movie'+str(ii)]: 
@@ -1641,7 +1663,6 @@ if __name__ == "__main__":
                 stimuli.append(mov['Movie'+str(i)]['fw_movie_scrub'])
                 stimuli.append(mov['Movie'+str(i)]['bw_movie_scrub'])
         start += SESSION_PARAMS['inter_blank']
->>>>>>> a8ee683e2f6a603922326e092ebcac8315ff1ad5
 
     ss = SweepStim(window,
                    stimuli=stimuli,
