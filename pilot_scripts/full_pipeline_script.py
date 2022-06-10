@@ -1306,6 +1306,7 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
             # would be enough runs if every block only ever played 1 movie
             # subtype (1 movie type*12 runs in a block*5 blocks)
 
+
             mov[moviename][str(j)] = MovieStim(
                     movie_path=os.path.join(base_path, moviename+str(j)+'.npy'),
                     window=window,
