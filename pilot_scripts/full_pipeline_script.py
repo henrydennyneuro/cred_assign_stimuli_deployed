@@ -1297,7 +1297,7 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
         propblocksexp = map(distributemoviesexp, expblocks)
         propblocks[moviename] = np.concatenate((propblocksctl, propblocksexp, [2], [3]))
 
-        for j in enumerate([0, 1, 2, 3]):
+        for j in [0, 1, 2, 3]:
             # rawmovie = np.load(stimulus_path)
             # npymovies = generatemovies(rawmovie)
 
