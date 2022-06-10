@@ -52,6 +52,7 @@ stages:
       sq_dur: 0
       movie_dur: 600
       movie_blocks: 3
+      gratings_dur: 0
 
   PASSIVE_CLUSTER_HAB_20MIN_DAY7:
     script: *pipeline_script
@@ -69,6 +70,7 @@ stages:
       sq_dur: 0
       movie_dur: 600
       movie_blocks: 3
+      gratings_dur: 0
 
   PASSIVE_CLUSTER_HAB_30MIN_DAY8:
     script: *pipeline_script
@@ -86,6 +88,7 @@ stages:
       sq_dur: 0
       movie_dur: 600
       movie_blocks: 3
+      gratings_dur: 0
 
   PASSIVE_CLUSTER_HAB_40MIN_DAY9:
     script: *pipeline_script
@@ -104,6 +107,7 @@ stages:
       sq_dur: 0
       movie_dur: 600
       movie_blocks: 3
+      gratings_dur: 0
 
   PASSIVE_CLUSTER_HAB_50MIN_DAY10:
     script: *pipeline_script
@@ -122,6 +126,7 @@ stages:
       sq_dur: 0
       movie_dur: 600
       movie_blocks: 3
+      gratings_dur: 0
 
   PASSIVE_OPHYS_PROD_EXP_DAY11_15:
     script: *pipeline_script
@@ -140,6 +145,7 @@ stages:
       sq_dur: 0
       movie_dur: 600
       movie_blocks: 3
+      gratings_dur: 0
 
   PASSIVE_OPHYS_PROD_UNEXP_DAY16_18:
     script: *pipeline_script
@@ -153,8 +159,9 @@ stages:
       pre_blank:  30
       post_blank: 30
       inter_blank:  30
-      gab_dur:  1035
-      rot_gab_dur: 1035
+      gab_dur: 0 #1035
+      rot_gab_dur: 0 #1035
       sq_dur: 0
       movie_dur: 600
-      movie_blocks: 3
+      movie_blocks: 2
+      gratings_dur: 0 
