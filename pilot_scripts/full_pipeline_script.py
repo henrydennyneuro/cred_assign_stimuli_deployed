@@ -5,7 +5,7 @@ Everything is randomized for each session for each animal (positions, sizes and
 orientations of Gabors).
 """
 import camstim
-from camstim import Stimulus, SweepStim, Foraging, Window, Warp
+from camstim import Stimulus, SweepStim, Foraging, Window, Warp, MovieStim
 
 import random
 import os
@@ -27,99 +27,6 @@ from psychopy.tools.attributetools import attributeSetter, setAttribute
 
 import argparse
 
-
-class VariMovieStim(Stimulus):
-    """
-    A movie stimulus designed for playing Numpy uint8 movies of arbitrary
-        size/resolution.
-    """
-    def __init__(self,
-                 movie_variable,
-                 window,
-                 frame_length,
-                 size=(640,480),
-                 pos=(0,0),
-                 start_time=0.0,
-                 stop_time=None,
-                 blank_length=0,
-                 blank_sweeps=0,
-                 runs=1,
-                 shuffle=False,
-                 fps=60.0,
-                 flip_v=False,
-                 flip_h=False,
-                 interpolate=False,
-                 ):
-
-        self.movie_variable = movie_variable
-        self.frame_length = frame_length
-
-        movie_data = self.movie_variable
-
-        psychopy_stimulus = ImageStimNumpyuByte(window,
-                                                image=movie_data[0],
-                                                size=size,
-                                                pos=pos,
-                                                units='pix',
-                                                flipVert=flip_v,
-                                                flipHoriz=flip_h,
-                                                interpolate=interpolate)
-        sweep_params = {
-            'ReplaceImage': (movie_data, 0),
-        }
-        super(VariMovieStim, self).__init__(psychopy_stimulus,
-                                        sweep_params,
-                                        sweep_length=frame_length,
-                                        start_time=start_time,
-                                        stop_time=stop_time,
-                                        blank_length=blank_length,
-                                        blank_sweeps=blank_sweeps,
-                                        runs=runs,
-                                        shuffle=shuffle,
-                                        fps=fps,
-                                        save_sweep_table=False)
-
-    def _local_copy(self, source):
-        """
-        Creates a local copy of a movie.
-        """
-        filename = os.path.basename(source)
-        local_dir = os.path.join(CAMSTIM_DIR, "movies")
-        check_dirs(local_dir)
-        local_path = os.path.join(local_dir, filename)
-        if os.path.isfile(local_path):
-            print("Movie file already exists locally @ {}".format(local_path))
-        else:
-            print("Movie not saved locally, copying...")
-            shutil.copy(source, local_path)
-            print("... Done!")
-        return local_path
-
-    def load_movie(self, path):
-        """
-        Loads a movie from a specified path.  Currently only supports .npy files.
-        """
-        if path[-3:] == "npy":
-            return self.load_numpy_movie(path)
-        else:
-            raise IOError("Incorrect movie file type.")
-
-    def load_numpy_movie(self, path):
-        """
-        Loads a numpy movie.  Ensures that it is read as a contiguous array and
-            three dimensional.
-        """
-        self.movie_local_path = self._local_copy(path)
-        movie_data = np.ascontiguousarray(np.load(self.movie_local_path))
-
-        # check shape/type
-        if movie_data.ndim != 3:
-            raise ValueError("Movie must have 3 dimenstions: (t, y, x))")
-        if not movie_data.dtype in [np.uint8, np.ubyte]:
-            raise ValueError("Movie must be dtype numpy.uint8")
-
-        return movie_data
-    
 
 class OurStims(ElementArrayStim):
     """
@@ -1346,7 +1253,7 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
     
     return rgb
     
-def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
+def init_run_movies(window, session_params, movie_params, surp, movie_folder):
     
     #Load in movie and create variants
     # path = ".\\natural_movies\\stims\\"
@@ -1369,12 +1276,7 @@ def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
     propblocks = {}
     
     for jj in range(0, MOVIE_PARAMS['movie_n']):
-        path = ".\\natural_movies\\stims\\" + str(jj) + "\\"
-        
-        stimulus_path_pattern = os.path.join(path, '*.npy')
-        stimulus_paths = sorted(
-            map(os.path.abspath, glob(stimulus_path_pattern))
-        )
+        base_path = os.path.join(movie_folder,  str(jj))
 
         moviename = 'Movie'+str(jj)
         mov[moviename] = {}
@@ -1395,7 +1297,7 @@ def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
         propblocksexp = map(distributemoviesexp, expblocks)
         propblocks[moviename] = np.concatenate((propblocksctl, propblocksexp, [2], [3]))
 
-        for j, stimulus_path in enumerate(stimulus_paths):
+        for j in enumerate([0, 1, 2, 3]):
             # rawmovie = np.load(stimulus_path)
             # npymovies = generatemovies(rawmovie)
 
@@ -1405,7 +1307,7 @@ def init_run_movies(window, session_params, movie_params=MOVIE_PARAMS, surp=1):
             # subtype (1 movie type*12 runs in a block*5 blocks)
 
             mov[moviename][str(j)] = MovieStim(
-                    movie_path=stimulus_path,
+                    movie_path=os.path.join(base_path, moviename+str(j)+'.npy'),
                     window=window,
                     stop_time=9.0,
                     blank_length=0,                            
@@ -1470,6 +1372,7 @@ if __name__ == "__main__":
     SESSION_PARAMS_gab_dur = json_params.get('gab_dur', 12.25*60)
     SESSION_PARAMS_rot_gab_dur = json_params.get('rot_gab_dur', 12.25*60)
     SESSION_PARAMS_sq_dur = json_params.get('sq_dur', 0*60)
+    SESSION_PARAMS_movie_folder = json_params.get('movie_folder', os.path.abspath(os.path.join("natural_movies", "stims")))
     SESSION_PARAMS_movie_dur = json_params.get('movie_dur', 10*60)
     SESSION_PARAMS_movie_blocks = json_params.get('movie_blocks', 3)
     SESSION_PARAMS_gratings_dur = json_params.get('gratings_dur', 0)
@@ -1497,10 +1400,8 @@ if __name__ == "__main__":
                   'sq_dur': SESSION_PARAMS_sq_dur, # duration of each brick block (total=2) (sec)
                   'movie_dur': SESSION_PARAMS_movie_dur, #duration of movie block (total=1) (sec)
                   'movie_blocks': SESSION_PARAMS_movie_blocks, #Number of movie blocks, each = movie_dur (sec)
-<<<<<<< HEAD
-=======
-                  'gratings_dur': SESSION_PARAMS_gratings_dur
->>>>>>> 7f43a0d3cafd87b1ccef3e15305fd433aa1719fe
+                  'gratings_dur': SESSION_PARAMS_gratings_dur,
+                  'movie_folder': SESSION_PARAMS_movie_folder
                   }
 
     # Record orientations of gabors at each sweep (LEAVE AS TRUE)
@@ -1571,7 +1472,7 @@ if __name__ == "__main__":
         stim_order.append('b')
         sq_order = ['l', 'r']
     if SESSION_PARAMS['movie_dur'] != 0:
-        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1)
+        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, 1, SESSION_PARAMS_movie_folder)
         for i in np.arange(SESSION_PARAMS['movie_blocks']):
             stim_order.append('m')
         mov_order = np.arange(MOVIE_PARAMS['movie_n'])
