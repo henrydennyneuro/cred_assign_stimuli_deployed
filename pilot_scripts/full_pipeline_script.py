@@ -13,7 +13,7 @@ import yaml
 
 import numpy as np
 
-from psychopy import monitors, logging, core
+from psychopy import monitors, logging, core, visual
 from psychopy.visual import ElementArrayStim
 from psychopy.tools.arraytools import val2array
 
