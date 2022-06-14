@@ -9,21 +9,13 @@ from camstim import Stimulus, SweepStim, Foraging, Window, Warp, MovieStim
 
 import random
 import os
-import sys
-import copy
-import itertools
-import time
 import yaml
 
 import numpy as np
-import pickle as pkl
 
-from glob import glob
-
-from psychopy import monitors, event, logging, core
+from psychopy import monitors, logging, core
 from psychopy.visual import ElementArrayStim
 from psychopy.tools.arraytools import val2array
-from psychopy.tools.attributetools import attributeSetter, setAttribute
 
 import argparse
 
