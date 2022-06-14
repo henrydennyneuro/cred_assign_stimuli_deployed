@@ -674,7 +674,7 @@ MOVIE_PARAMS = {
                 'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
                 'surp_len': [10, 30], # range of durations (sec) for seq of surprise sets
                 'seg_len': 10, # duration (sec) of each segment (somewhat arbitrary) 
-                'vids_per_block': 12, # Number of videos per block 
+                'vids_per_block': 20, # Number of videos per block 
                 }
 
 
@@ -1255,73 +1255,49 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
     
 def init_run_movies(window, session_params, movie_params, surp, movie_folder):
     
-    #Load in movie and create variants
-    # path = ".\\natural_movies\\stims\\"
-    
-    # stimulus_path_pattern = os.path.join(path, '*.npy')
-    # stimulus_paths = sorted(
-    #     map(os.path.abspath, glob(stimulus_path_pattern))
-    # )
+    # Propblocks sets the order for presentation of clips in a proportional manner.
+    # In ophys, each clip is played once per block
+    # In habituation, each fw clip is played the desired number of times
+    propblocks = []
 
-    # nameindex = -1
+    if session_params['type'] == 'hab':
+        fwonly = np.arange(0, (session_params['vids_per_block']), 4)
+        extender = np.concatenate([fwonly, fwonly, fwonly, fwonly])
+        propblocks = np.random.permutation(extender)
+        print(propblocks)
 
-    # for j, stimulus_path in enumerate(stimulus_paths):
-    #     nameindex = nameindex + 1
-    #     moviename = 'Movie'+str(nameindex)
-    #     #rawmovie = np.load(stimulus_path)
-    #     #npymovies = generatemovies(rawmovie)
-    
+    elif session_params['type'] == 'ophys':    
+        propblocks = np.random.permutation(np.arange(session_params['vids_per_block']))
+
+    # Set parameters for loading each clip into MovieStim
+    path = movie_folder
     nameindex = -1
     mov = {}
-    propblocks = {}
+    maxruns = session_params['movie_blocks']*(session_params['vids_per_block']/4)
+    count = 0
+    movindex = 0
     
-    for jj in range(0, MOVIE_PARAMS['movie_n']):
-        base_path = os.path.join(movie_folder,  str(jj))
-
-        moviename = 'Movie'+str(jj)
-        mov[moviename] = {}
+    # Use duel counters to set the movie path to correspond to the clip name.
+    # Iterate for all clips.        
+    for j in np.arange(session_params['vids_per_block']):
         
-        # Generate blocks by pulling from a uniform distribution. We can then assign
-        # % chances for each video subtype in the "distributemovies" functions
-        ctlblocks = np.empty(((movie_params['vids_per_block'])/3)+1)
-        for i in range(((movie_params['vids_per_block'])/3)+1):
-            ctlblocks[i] = np.random.uniform(0.0, 1.0)
-        #ctrl = True
+        mov[str(j)] = MovieStim(
+                movie_path=os.path.join(path, str(movindex)+str(count)+'.npy'),
+                window=window,
+                stop_time=9.0,
+                blank_length=0,                            
+                frame_length=1.0 / 30,
+                size=(1920, 1080),
+                runs= maxruns,   
+                flip_v=True
+            )
+        
+        count = count + 1
 
-        expblocks = np.empty(((movie_params['vids_per_block'])/3)+1)
-        for i in range(((movie_params['vids_per_block'])/3)+1):
-            expblocks[i] = np.random.uniform(0.0, 1.0)
-        #exp = False
+        if count == 4:
+            movindex = movindex + 1
+            count = 0
 
-        propblocksctl = map(distributemoviesctl, ctlblocks)
-        propblocksexp = map(distributemoviesexp, expblocks)
-        propblocks[moviename] = np.concatenate((propblocksctl, propblocksexp, [2], [3]))
-
-        for j in [0, 1, 2, 3]:
-            # rawmovie = np.load(stimulus_path)
-            # npymovies = generatemovies(rawmovie)
-
-            maxruns = session_params['movie_blocks']*movie_params['vids_per_block']
-            # It's not possible to dynamically input this. 60 runs 
-            # would be enough runs if every block only ever played 1 movie
-            # subtype (1 movie type*12 runs in a block*5 blocks)
-
-
-            mov[moviename][str(j)] = MovieStim(
-                    movie_path=os.path.join(base_path, moviename+str(j)+'.npy'),
-                    window=window,
-                    stop_time=9.0,
-                    blank_length=0,                            
-                    frame_length=1.0 / 30,
-                    size=(1920, 1080),
-                    runs= maxruns,   
-                    flip_v=True
-                )
-            
-            attribs = ['units']
-    
-            mov[moviename][str(j)].stim_params = {key:mov[moviename][str(j)].stim.__dict__[key] for key in attribs}
-    
     return mov, propblocks
 
 def init_run_gratings(window):
