@@ -1412,7 +1412,7 @@ if __name__ == "__main__":
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
-                MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'] + SESSION_PARAMS['gratings_dur']
+                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1450,8 +1450,7 @@ if __name__ == "__main__":
         sq_order = ['l', 'r']
     if SESSION_PARAMS['movie_dur'] != 0:
         mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, 1, SESSION_PARAMS_movie_folder)
-        for i in np.arange(SESSION_PARAMS['movie_blocks']):
-            stim_order.append('m')
+        stim_order.append('m')
         mov_order = np.arange(MOVIE_PARAMS['movie_n'])
     if SESSION_PARAMS['gratings_dur'] != 0:
         grt = init_run_gratings(window)
@@ -1467,16 +1466,14 @@ if __name__ == "__main__":
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
     
-    fwdisplayorder = {}
-    bwdisplayorder = {}
-    fwsdisplayorder = {}
-    bwsdisplayorder = {}
-    for i in range(MOVIE_PARAMS['movie_n']):
-        fwdisplayorder['Movie'+str(i)] = []
-        bwdisplayorder['Movie'+str(i)] = []
-        fwsdisplayorder['Movie'+str(i)] = []
-        bwsdisplayorder['Movie'+str(i)] = []
-
+    displayorder = {}
+    if SESSION_PARAMS['type'] == 'ophys':    
+        for i in np.arange(SESSION_PARAMS['vids_per_block']):
+            displayorder[str(i)] = []
+    elif SESSION_PARAMS['type'] == 'hab':
+        for i in np.arange(0, SESSION_PARAMS['vids_per_block'], 4):
+            displayorder[str(i)] = []
+    
     for i in stim_order:
         if i == 'g':
             for j in gab_order:
@@ -1509,31 +1506,25 @@ if __name__ == "__main__":
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
         elif i == 'm':
-            for ii in mov_order:
-                for j in propblocks['Movie'+str(ii)]: 
-                    if j == 0:
-                        fwdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
-                    elif j == 1:
-                        bwdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
-                    elif j == 2:
-                        fwsdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
-                    elif j == 3:
-                        bwsdisplayorder['Movie'+str(ii)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
-                    # update the new starting point for the next stim
-                    start += MOVIE_PARAMS['movie_len']
+            for ii in np.arange(SESSION_PARAMS['movie_blocks']):
+                if SESSION_PARAMS['type'] == 'ophys':
+                    for j in propblocks:
+                        displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
+                        start += MOVIE_PARAMS['movie_len']
+                        # update the new starting point for the next stim
+                    for j in np.arange(SESSION_PARAMS['vids_per_block']):
+                        mov[str(j)].set_display_sequence(displayorder[str(j)])
+                        stimuli.append(mov[str(j)])
+                    start += SESSION_PARAMS['inter_blank']
 
-            for i in range(MOVIE_PARAMS['movie_n']):
-                mov['Movie'+str(i)]['0'].set_display_sequence(fwdisplayorder['Movie'+str(i)])
-                mov['Movie'+str(i)]['1'].set_display_sequence(bwdisplayorder['Movie'+str(i)])
-                mov['Movie'+str(i)]['2'].set_display_sequence(fwsdisplayorder['Movie'+str(i)])
-                mov['Movie'+str(i)]['3'].set_display_sequence(bwsdisplayorder['Movie'+str(i)])             
-
-                stimuli.append(mov['Movie'+str(i)]['0'])
-                stimuli.append(mov['Movie'+str(i)]['1'])
-                stimuli.append(mov['Movie'+str(i)]['2'])
-                stimuli.append(mov['Movie'+str(i)]['3'])
-
-            start += SESSION_PARAMS['inter_blank']
+                elif SESSION_PARAMS['type'] == 'hab':
+                    for j in propblocks:
+                        displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
+                        start += MOVIE_PARAMS['movie_len']
+                    for j in np.arange(0, SESSION_PARAMS['vids_per_block'], 4):
+                        mov[str(j)].set_display_sequence(displayorder[str(j)])
+                        stimuli.append(mov[str(j)])    
+                    start += SESSION_PARAMS['inter_blank']
         elif i == 'grt':
             stimuli.append(grt)
 
