@@ -633,7 +633,7 @@ GABOR_PARAMS = {
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'im_len': 0.3, # duration (sec) of each image (e.g., A)
                 'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
-                'surp_len': [3, 6], # range of durations (sec) for seq of surprise sets
+                'surp_len': [6, 12], # range of durations (sec) for seq of surprise sets
                 'sd': 3, # nbr of st dev (gauss) to edge of gabor (default is 6)
                 
                 ### Changing these will require tweaking downstream...
@@ -930,29 +930,6 @@ def fliporder(rng, seg_len, reg_len, surp_len, block_len):
     fliplist = flipgenerator(flipcode, segperblock)
 
     return fliplist
-
-def distributemoviesctl(score):
-        
-    #This function turns samples from a uniform distribution and turns them into
-    #presentation probabilities. 
-    if score < 0.5:
-        return 0
-    else:
-        return 1
-
-def distributemoviesexp(score):
-        
-    #This function turns samples from a uniform distribution and turns them into
-    #presentation probabilities. 
-
-    if score < 0.30:
-        return 0
-    elif score >= 0.30 and score < 0.60:
-        return 1
-    elif score >= 0.60 and score < 0.80:
-        return 2
-    else:
-        return 3
 
 def init_run_squares(window, direc, session_params, recordPos, square_params=SQUARE_PARAMS):
 
@@ -1292,7 +1269,7 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
 
     return mov, propblocks
 
-def init_run_gratings(window):
+def init_run_gratings(window, session_params):
 
     grt = Stimulus(visual.GratingStim(window,
                     pos=(0, 0),
@@ -1304,15 +1281,15 @@ def init_run_gratings(window):
                     ),
                     sweep_params={
                                    'Contrast': ([0.8], 0),
-                                   'SF': ([0.02, 0.04, 0.08, 0.16, 0.32], 1),
+                                   'SF': ([0.04, 0.04], 1),
                                    'Ori': (range(0, 180, 30), 2),
                                    'Phase': ([0.0, 0.25, 0.5, 0.75], 3),
                                    },
-                    sweep_length=0.25,
+                    sweep_length=0.3,
                     start_time=0.0,
                     blank_length=0.0,
                     blank_sweeps=25,
-                    runs=20,
+                    runs=session_params['gratings_dur'],
                     shuffle=True,
                     save_sweep_table=True,
     )
@@ -1404,7 +1381,7 @@ if __name__ == "__main__":
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
-                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']
+                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']*12.25
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1445,7 +1422,7 @@ if __name__ == "__main__":
         stim_order.append('m')
         mov_order = np.arange(MOVIE_PARAMS['movie_n'])
     if SESSION_PARAMS['gratings_dur'] != 0:
-        grt = init_run_gratings(window)
+        grt = init_run_gratings(window, SESSION_PARAMS.copy())
         stim_order.append('grt')
 
 
@@ -1499,8 +1476,9 @@ if __name__ == "__main__":
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
         elif i == 'm':
             for ii in np.arange(SESSION_PARAMS['movie_blocks']):
+                propblocksshuf = np.random.permutation(propblocks)
                 if SESSION_PARAMS['type'] == 'ophys':
-                    for j in propblocks:
+                    for j in propblocksshuf:
                         displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
                         start += MOVIE_PARAMS['movie_len']
                         # update the new starting point for the next stim
@@ -1510,7 +1488,7 @@ if __name__ == "__main__":
                     start += SESSION_PARAMS['inter_blank']
 
                 elif SESSION_PARAMS['type'] == 'hab':
-                    for j in propblocks:
+                    for j in propblocksshuf:
                         displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
                         start += MOVIE_PARAMS['movie_len']
                     for j in np.arange(0, MOVIE_PARAMS['vids_per_block'], 4):
