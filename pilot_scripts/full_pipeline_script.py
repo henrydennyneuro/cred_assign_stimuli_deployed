@@ -1416,7 +1416,7 @@ if __name__ == "__main__":
         stim_order.append('b')
         sq_order = ['l', 'r']
     if SESSION_PARAMS['movie_dur'] != 0:
-        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1, SESSION_PARAMS['movie_folder'])
+        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, 1, SESSION_PARAMS['movie_folder'])
         stim_order.append('m')
         mov_order = np.arange(MOVIE_PARAMS['movie_n'])
     if SESSION_PARAMS['gratings_dur'] != 0:
