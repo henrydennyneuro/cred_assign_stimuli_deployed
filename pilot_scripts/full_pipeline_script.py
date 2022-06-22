@@ -666,7 +666,7 @@ MOVIE_PARAMS = {
                 'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
                 'surp_len': [10, 30], # range of durations (sec) for seq of surprise sets
                 'seg_len': 10, # duration (sec) of each segment (somewhat arbitrary) 
-                'vids_per_block': 20, # Number of videos per block 
+                'vids_per_block': 12, # Number of videos per block 
                 }
 
 
@@ -1403,14 +1403,12 @@ if __name__ == "__main__":
         
         stim_order.append('g')
         gab_order = [1, 2]
-        gab_block_order = [1,2]
+        gab_block_order = [1, 2]
     if SESSION_PARAMS['rot_gab_dur'] != 0:
         rgb_1 = init_rotate_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
         
         # share positions and sizes from original Gabors. Keeps possize the same
         rgb_2 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=2)
-        
-        #stim_order.append('rg')
         rot_gab_order = [1, 2]
     if SESSION_PARAMS['sq_dur'] != 0:
         sq_left = init_run_squares(window, 'left', SESSION_PARAMS.copy(), recordPos)
@@ -1418,8 +1416,7 @@ if __name__ == "__main__":
         stim_order.append('b')
         sq_order = ['l', 'r']
     if SESSION_PARAMS['movie_dur'] != 0:
-        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1)
-        #for i in np.arange(SESSION_PARAMS['movie_blocks']):
+        mov, propblocks = init_run_movies(window, SESSION_PARAMS.copy(), MOVIE_PARAMS, surp=1, SESSION_PARAMS['movie_folder'])
         stim_order.append('m')
         mov_order = np.arange(MOVIE_PARAMS['movie_n'])
     if SESSION_PARAMS['gratings_dur'] != 0:
@@ -1439,10 +1436,10 @@ if __name__ == "__main__":
     
     displayorder = {}
     if SESSION_PARAMS['type'] == 'ophys':    
-        for i in np.arange(SESSION_PARAMS['vids_per_block']):
+        for i in np.arange(MOVIE_PARAMS['vids_per_block']):
             displayorder[str(i)] = []
     elif SESSION_PARAMS['type'] == 'hab':
-        for i in np.arange(0, SESSION_PARAMS['vids_per_block'], 4):
+        for i in np.arange(0, MOVIE_PARAMS['vids_per_block'], 4):
             displayorder[str(i)] = []
     
     for i in stim_order:
@@ -1487,7 +1484,7 @@ if __name__ == "__main__":
                         displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
                         start += MOVIE_PARAMS['movie_len']
                         # update the new starting point for the next stim
-                    for j in np.arange(SESSION_PARAMS['vids_per_block']):
+                    for j in np.arange(MOVIE_PARAMS['vids_per_block']):
                         mov[str(j)].set_display_sequence(displayorder[str(j)])
                         stimuli.append(mov[str(j)])
                     start += SESSION_PARAMS['inter_blank']
@@ -1497,7 +1494,7 @@ if __name__ == "__main__":
                     for j in propblocksshuf:
                         displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
                         start += MOVIE_PARAMS['movie_len']
-                    for j in np.arange(0, SESSION_PARAMS['vids_per_block'], 4):
+                    for j in np.arange(0, MOVIE_PARAMS['vids_per_block'], 4):
                         mov[str(j)].set_display_sequence(displayorder[str(j)])
                         stimuli.append(mov[str(j)])    
                     start += SESSION_PARAMS['inter_blank']
