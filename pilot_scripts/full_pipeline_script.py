@@ -1250,7 +1250,7 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
     for j in np.arange(movie_params['vids_per_block']):
         
         mov[str(j)] = MovieStim(
-                movie_path=os.path.join(path, str(movindex)+str(count)+'.npy'),
+                movie_path=os.path.join(path, "m"+str(movindex)+str(count)+'.npy'),
                 window=window,
                 stop_time=9.0,
                 blank_length=0,                            
