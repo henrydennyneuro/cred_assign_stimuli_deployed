@@ -632,8 +632,8 @@ GABOR_PARAMS = {
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'im_len': 0.3, # duration (sec) of each image (e.g., A)
-                'reg_len': [30, 90], # range of durations (sec) for seq of regular sets
-                'surp_len': [6, 12], # range of durations (sec) for seq of surprise sets
+                'reg_len': [30, 45], # range of durations (sec) for seq of regular sets
+                'surp_len': [4.5, 7.5], # range of durations (sec) for seq of surprise sets
                 'sd': 3, # nbr of st dev (gauss) to edge of gabor (default is 6)
                 
                 ### Changing these will require tweaking downstream...
@@ -1241,7 +1241,7 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
     path = movie_folder
     nameindex = -1
     mov = {}
-    maxruns = session_params['movie_blocks']*(movie_params['vids_per_block']/4)
+    maxruns = session_params['movie_blocks']*(movie_params['vids_per_block'])
     count = 0
     movindex = 0
     
@@ -1392,6 +1392,7 @@ if __name__ == "__main__":
     rot_gab_order = []
     mov_order = []
     grt_order = []
+    gab_block_order = []
 
     if SESSION_PARAMS['gab_dur'] != 0:
         gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
@@ -1477,28 +1478,26 @@ if __name__ == "__main__":
                 # update the new starting point for the next stim
                 start += SESSION_PARAMS['sq_dur'] + SESSION_PARAMS['inter_blank'] 
         elif i == 'm':
-            for ii in np.arange(SESSION_PARAMS['movie_blocks']):
-                if SESSION_PARAMS['type'] == 'ophys':
+            if SESSION_PARAMS['type'] == 'ophys':
+                for ii in np.arange(SESSION_PARAMS['movie_blocks']):
                     propblocksshuf = np.random.permutation(propblocks)
                     for j in propblocksshuf:
                         displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
                         start += MOVIE_PARAMS['movie_len']
-                        # update the new starting point for the next stim
-                    for j in np.arange(MOVIE_PARAMS['vids_per_block']):
-                        mov[str(j)].set_display_sequence(displayorder[str(j)])
-                        stimuli.append(mov[str(j)])
-                    start += SESSION_PARAMS['inter_blank']
-
-                elif SESSION_PARAMS['type'] == 'hab':
+                for j in np.arange(MOVIE_PARAMS['vids_per_block']):
+                    mov[str(j)].set_display_sequence(displayorder[str(j)])
+                    stimuli.append(mov[str(j)])
+            elif SESSION_PARAMS['type'] == 'hab':
+                for ii in np.arange(SESSION_PARAMS['movie_blocks']):
                     propblocksshuf = np.random.permutation(propblocks)
                     for j in propblocksshuf:
                         displayorder[str(j)].append((start, start+(MOVIE_PARAMS['movie_len'])-1))
                         start += MOVIE_PARAMS['movie_len']
-                    for j in np.arange(0, MOVIE_PARAMS['vids_per_block'], 4):
-                        mov[str(j)].set_display_sequence(displayorder[str(j)])
-                        stimuli.append(mov[str(j)])    
-                    start += SESSION_PARAMS['inter_blank']
-
+                for j in np.arange(0, MOVIE_PARAMS['vids_per_block'], 4):
+                    mov[str(j)].set_display_sequence(displayorder[str(j)])
+                    stimuli.append(mov[str(j)])    
+            start += SESSION_PARAMS['inter_blank']
+            # update the new starting point for the next stim
     if SESSION_PARAMS['gratings_dur'] != 0:
         grt.set_display_sequence([(start, (start + SESSION_PARAMS['gratings_dur']*14.7))])
         stimuli.append(grt)
