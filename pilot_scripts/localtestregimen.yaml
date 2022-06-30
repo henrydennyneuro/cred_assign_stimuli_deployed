@@ -1,0 +1,16 @@
+#monitor_name: "Gamma1.Luminance50"
+type: 'ophys'
+session_dur: 4118.7
+pre_blank: 30
+post_blank: 30
+inter_blank: 30
+gab_dur:  450
+rot_gab_dur: 450
+sq_dur: 0
+movie_dur: 1800
+movie_blocks: 15
+gratings_dur: 26 #runs. 1 run = 14.7s so 308.7s
+movie_folder: C:\Users\Henry Denny\Documents\Richards_lab_Stim_Protocol\cred_assign_stimuli-main\natural_movies\stims
+
+# To use this script with full_pipeline script, use the following call:
+# >python full_pipeline_script.py --json_path localtestregimen.yaml
