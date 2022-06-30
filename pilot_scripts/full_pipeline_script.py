@@ -628,7 +628,7 @@ GABOR_PARAMS = {
                 'phase': 0.25, #value 0-1
                 
                 'oris': range(0, 360, 45), # orientation means to use (deg) # AMENDED FOR PRODUCTION V2
-                'ori_std': 0.25, # orientation st dev to use (rad) (single value)
+                'ori_std': 0.2, # orientation st dev to use (rad) (single value)
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'im_len': 0.3, # duration (sec) of each image (e.g., A)
