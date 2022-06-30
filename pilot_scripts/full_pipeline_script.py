@@ -632,7 +632,7 @@ GABOR_PARAMS = {
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'im_len': 0.3, # duration (sec) of each image (e.g., A)
-                'reg_len': [15, 45], # range of durations (sec) for seq of regular sets
+                'reg_len': [12, 24], # range of durations (sec) for seq of regular sets
                 'surp_len': [3, 6], # range of durations (sec) for seq of surprise sets
                 'sd': 3, # nbr of st dev (gauss) to edge of gabor (default is 6)
                 
