@@ -1131,7 +1131,7 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     gb.stim_params = {key:gb.stim.__dict__[key] for key in attribs}
     
     # Added to facilitate creating the NWB files
-    gb.stim_path = r"C:\\not_a_stim_script\\gabors.stim"
+    gb.stim_path = r"C:\\not_a_stim_script\\fixed_gabors.stim"
     
     return gb
 
