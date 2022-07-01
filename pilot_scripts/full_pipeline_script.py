@@ -621,19 +621,19 @@ Parameters are set here.
 
 GABOR_PARAMS = {
                 ### PARAMETERS TO SET
-                'n_gabors': 30,
+                'n_gabors': 45,
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
                 'phase': 0.25, #value 0-1
                 
-                'oris': range(0, 360, 45), # orientation means to use (deg) # AMENDED FOR PRODUCTION V2
-                'ori_std': 0.25, # orientation st dev to use (rad) (single value)
+                'oris': range(0, 360, 30), # orientation means to use (deg) # AMENDED FOR PRODUCTION V2
+                'ori_std': 0.2, # orientation st dev to use (rad) (single value)
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
                 'im_len': 0.3, # duration (sec) of each image (e.g., A)
-                'reg_len': [30, 45], # range of durations (sec) for seq of regular sets
-                'surp_len': [4.5, 7.5], # range of durations (sec) for seq of surprise sets
+                'reg_len': [12, 24], # range of durations (sec) for seq of regular sets
+                'surp_len': [3, 6], # range of durations (sec) for seq of surprise sets
                 'sd': 3, # nbr of st dev (gauss) to edge of gabor (default is 6)
                 
                 ### Changing these will require tweaking downstream...
@@ -670,18 +670,26 @@ MOVIE_PARAMS = {
                 }
 
 
-def winVar(win, units):
+def winVar(win, units, small_angle_approx=True):
     """Returns width and height of the window in units as tuple.
     Takes window and units.
+    Uses small angle approximation, by default # AMENDED FOR PILOT V2
     """
     dist = win.monitor.getDistance()
     width = win.monitor.getWidth()
     
     # get values to convert deg to pixels
-    deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
-    deg_per_pix = deg_wid/win.size[0] # about 0.07
-    
+    if small_angle_approx:
+        pix_wid = float(width)/win.size[0]
+        deg_per_pix = np.rad2deg(pix_wid/dist) # about 0.10 if width is 1920
+    else:
+        deg_wid = np.rad2deg(np.arctan((0.5*width)/dist)) * 2 # about 120
+        deg_per_pix = deg_wid/win.size[0] # about 0.06 if width is 1920
+
     if units == 'deg':
+        if small_angle_approx:
+            raise NotImplementedError('fieldSize in degrees is ill-defined, if using small angle approximation.')
+        
         deg_hei = deg_per_pix * win.size[1] # about 67
         # Something is wrong with deg as this does not fill screen
         init_wid = deg_wid
@@ -1466,7 +1474,7 @@ if __name__ == "__main__":
                             rgb_2.set_display_sequence([(start, start+SESSION_PARAMS['rot_gab_dur'])])
                         start += SESSION_PARAMS['gab_dur']
                         # update the new starting point for the next stim
-            start += SESSION_PARAMS['inter_blank']
+                start += SESSION_PARAMS['inter_blank']
         elif i == 'b':
             for j in sq_order:
                 if j == 'l':
