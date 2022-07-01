@@ -1026,6 +1026,9 @@ def init_run_squares(window, direc, session_params, recordPos, square_params=SQU
     
     sq.stim_params = {key:sq.stim.__dict__[key] for key in attribs}
     
+    # Added to facilitate creating the NWB files
+    sq.stim_path = r"C:\\not_a_stim_script\\squares.stim"
+    
     return sq
 
 def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS, surp=1): # AMENDED FOR PRODUCTION V2
@@ -1127,6 +1130,9 @@ def init_run_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAM
     
     gb.stim_params = {key:gb.stim.__dict__[key] for key in attribs}
     
+    # Added to facilitate creating the NWB files
+    gb.stim_path = r"C:\\not_a_stim_script\\gabors.stim"
+    
     return gb
 
 def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PARAMS, surp=1): # AMENDED FOR PRODUCTION V2
@@ -1227,6 +1233,9 @@ def init_rotate_gabors(window, session_params, recordOris, gabor_params=GABOR_PA
                'surp']
     
     rgb.stim_params = {key:rgb.stim.__dict__[key] for key in attribs}
+        
+    # Added to facilitate creating the NWB files
+    rgb.stim_path = r"C:\\not_a_stim_script\\rotate_gabors.stim"
     
     return rgb
     
@@ -1273,7 +1282,30 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
         if count == 4:
             movindex = movindex + 1
             count = 0
-
+        
+        if movindex == 0:
+            movie_string = 'flower'
+        elif movindex == 1:
+            movie_string = 'touch_of_evil'
+        elif movindex == 2:
+            movie_string = 'worms'
+        else:
+            movie_string = 'undefined'
+            
+        if count == 0:
+            movie_pass = 'fwd'
+        elif count == 1:
+            movie_pass = 'rev'
+        elif count == 2:
+            movie_pass = 'fwd_rev'
+        elif count == 3:
+            movie_pass = 'rev_fwd'
+        else:
+            movie_pass = 'undefined'
+            
+        # Added to facilitate creating the NWB files
+        mov[str(j)].stim_path = r"C:\\not_a_stim_script\\movie_"+movie_string+"_"+movie_pass+".stim"
+        
     return mov, propblocks
 
 def init_run_gratings(window, session_params):
@@ -1300,7 +1332,10 @@ def init_run_gratings(window, session_params):
                     shuffle=True,
                     save_sweep_table=True,
     )
-
+        
+    # Added to facilitate creating the NWB files
+    grt.stim_path = r"C:\\not_a_stim_script\\gratings.stim"
+    
     return grt
     
 if __name__ == "__main__":
@@ -1335,7 +1370,6 @@ if __name__ == "__main__":
 
     dist = 15.0
     wid = 52.0
-    
     
     SESSION_PARAMS = {'type': SESSION_PARAMS_type, # type of session (hab or ophys)
                                    # entering 'hab' will remove any surprises
