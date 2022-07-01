@@ -1,5 +1,5 @@
-_pipeline_script: &pipeline_script http://stash.corp.alleninstitute.org/users/jeromel/repos/openscope_dendritic_coupling/raw/pilot_scripts/full_pipeline_script.py?at=3b8af1eeb0e117b611fb64c77269673344fb602b
-_pipeline_script_md5: &pipeline_script_md5 b92a03855fb06a1316a0920047edb914
+_pipeline_script: &pipeline_script http://stash.corp.alleninstitute.org/users/jeromel/repos/openscope_dendritic_coupling/raw/pilot_scripts/full_pipeline_script.py?at=e769b99282d89a71bc2db4d3db3467114513d617
+_pipeline_script_md5: &pipeline_script_md5 8d8fe6b059680127ddc7f38e1547e5ea
 
 ### mtrain definitions
 name: Openscope_DendriticCoupling_v16
