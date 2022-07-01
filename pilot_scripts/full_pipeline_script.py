@@ -1277,12 +1277,6 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
                 flip_v=True
             )
         
-        count = count + 1
-
-        if count == 4:
-            movindex = movindex + 1
-            count = 0
-        
         if movindex == 0:
             movie_string = 'flower'
         elif movindex == 1:
@@ -1303,6 +1297,12 @@ def init_run_movies(window, session_params, movie_params, surp, movie_folder):
         else:
             movie_pass = 'undefined'
             
+        count = count + 1
+
+        if count == 4:
+            movindex = movindex + 1
+            count = 0
+        
         # Added to facilitate creating the NWB files
         mov[str(j)].stim_path = r"C:\\not_a_stim_script\\movie_"+movie_string+"_"+movie_pass+".stim"
         
