@@ -627,7 +627,7 @@ GABOR_PARAMS = {
                 'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
                 'phase': 0.25, #value 0-1
                 
-                'oris': range(0, 360, 45), # orientation means to use (deg) # AMENDED FOR PRODUCTION V2
+                'oris': range(0, 360, 30), # orientation means to use (deg) # AMENDED FOR PRODUCTION V2
                 'ori_std': 0.2, # orientation st dev to use (rad) (single value)
                 
                 ###FOR NO SURPRISE, enter [0, 0] for surp_len and [block_len, block_len] for reg_len
