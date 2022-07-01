@@ -1474,7 +1474,7 @@ if __name__ == "__main__":
                             rgb_2.set_display_sequence([(start, start+SESSION_PARAMS['rot_gab_dur'])])
                         start += SESSION_PARAMS['gab_dur']
                         # update the new starting point for the next stim
-            start += SESSION_PARAMS['inter_blank']
+                start += SESSION_PARAMS['inter_blank']
         elif i == 'b':
             for j in sq_order:
                 if j == 'l':
