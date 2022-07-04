@@ -1422,7 +1422,7 @@ if __name__ == "__main__":
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
-                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']*12.25
+                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']*14.7
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
