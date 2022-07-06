@@ -1320,7 +1320,7 @@ def init_run_gratings(window, session_params):
                     ),
                     sweep_params={
                                    'Contrast': ([0.8], 0),
-                                   'SF': ([0.08, 0.08], 1),
+                                   'SF': ([0.08], 1),
                                    'Ori': (range(0, 180, 30), 2),
                                    'Phase': ([0.0, 0.25, 0.5, 0.75], 3),
                                    },
