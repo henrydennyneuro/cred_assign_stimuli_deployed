@@ -624,7 +624,7 @@ GABOR_PARAMS = {
                 'n_gabors': 45,
                 # range of size of gabors to sample from (height and width set to same value)
                 'size_ran': [10, 20], # in deg (regardless of units below), full-width half-max 
-                'sf': 0.04, # spatial freq (cyc/deg) (regardless of units below)
+                'sf': 0.08, # spatial freq (cyc/deg) (regardless of units below)
                 'phase': 0.25, #value 0-1
                 
                 'oris': range(0, 360, 30), # orientation means to use (deg) # AMENDED FOR PRODUCTION V2
@@ -1320,7 +1320,7 @@ def init_run_gratings(window, session_params):
                     ),
                     sweep_params={
                                    'Contrast': ([0.8], 0),
-                                   'SF': ([0.04, 0.04], 1),
+                                   'SF': ([0.08], 1),
                                    'Ori': (range(0, 180, 30), 2),
                                    'Phase': ([0.0, 0.25, 0.5, 0.75], 3),
                                    },
