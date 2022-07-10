@@ -1409,7 +1409,7 @@ if __name__ == "__main__":
     SESSION_PARAMS['rng'] = np.random.RandomState(SESSION_PARAMS['seed'])
     
     # Create display window
-    window = Window(fullscr=False, # Will return an error due to default size. Ignore.
+    window = Window(fullscr=True, # Will return an error due to default size. Ignore.
                     monitor=monitor, 
                     screen=0,
                     warp=Warp.Spherical
@@ -1437,7 +1437,7 @@ if __name__ == "__main__":
     gab_block_order = []
 
     if SESSION_PARAMS['gab_dur'] != 0:
-        gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
+        gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=2)
         
         # share positions and sizes
         gb_2_session_params = SESSION_PARAMS.copy()
@@ -1448,7 +1448,7 @@ if __name__ == "__main__":
         gab_order = [1, 2]
         gab_block_order = [1, 2]
     if SESSION_PARAMS['rot_gab_dur'] != 0:
-        rgb_1 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=1)
+        rgb_1 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=2)
         
         # share positions and sizes from original Gabors. Keeps possize the same
         rgb_2 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=2)
