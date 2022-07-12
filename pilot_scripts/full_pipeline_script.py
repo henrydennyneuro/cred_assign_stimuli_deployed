@@ -1422,7 +1422,7 @@ if __name__ == "__main__":
     tot_calc = SESSION_PARAMS['pre_blank'] + SESSION_PARAMS['post_blank'] + \
                (n_stim - 1)*SESSION_PARAMS['inter_blank'] + 2*SESSION_PARAMS['gab_dur'] + \
                2*SESSION_PARAMS['sq_dur'] + 2*SESSION_PARAMS['rot_gab_dur'] +\
-                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']*12.25
+                (MOVIE_PARAMS['movie_len']*MOVIE_PARAMS['vids_per_block'])*SESSION_PARAMS['movie_blocks'] + SESSION_PARAMS['gratings_dur']*14.7
     if tot_calc != SESSION_PARAMS['session_dur']:
         print('Session should add up to {} s, but adds up to {} s.'
               .format(SESSION_PARAMS['session_dur'], tot_calc))
@@ -1437,7 +1437,7 @@ if __name__ == "__main__":
     gab_block_order = []
 
     if SESSION_PARAMS['gab_dur'] != 0:
-        gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
+        gb_1 = init_run_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=2)
         
         # share positions and sizes
         gb_2_session_params = SESSION_PARAMS.copy()
@@ -1448,7 +1448,7 @@ if __name__ == "__main__":
         gab_order = [1, 2]
         gab_block_order = [1, 2]
     if SESSION_PARAMS['rot_gab_dur'] != 0:
-        rgb_1 = init_rotate_gabors(window, SESSION_PARAMS.copy(), recordOris, surp=1)
+        rgb_1 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=2)
         
         # share positions and sizes from original Gabors. Keeps possize the same
         rgb_2 = init_rotate_gabors(window, gb_2_session_params, recordOris, surp=2)
