@@ -39,15 +39,11 @@ Sparse Gabor sequences (adapted from [Homann _et al._, 2022, _PNAS_](https://www
 &nbsp;
 
 ## Scripts  
-### `pilot_scripts` : scripts used for deployment
+### `pilot_scripts` : scripts used for production deployment
 - `full_pipeline_script` : Contains flexible scripts that determines the session type, and generates a suitable hapituation or ophys presentation. When running locally, parameters parameters should be recieved from `localtestregimen` using the following command:
 `>python full_pipeline_script.py --json_path localtestregimen.yaml`.  
 - `localtestregimen` : scripts used to set durations for each stimulus. Full length presentation totalled 70 minutes.
 - `movie_transformer` : Takes original, full length movies and creates 4, 9 second movie clips used as stimuli in the experiments (Forward, Backwards, Forward with 3 second backwards reversal, Backwards with 3 second forward reversal).
-&nbsp;
-
-### `production_scripts` : scripts used for the production deployment
-_Not yet created._
 &nbsp;
 
 ## Log files
@@ -66,5 +62,5 @@ _Not yet created._
 - The same display size must be reused during reproduction.
 
 ## Code
-Code and documentation (excluding `camstim`) built by Colleen Gillon (colleen _dot_ gillon _at_ mail _dot_ utoronto _dot_ ca).
+Code and documentation (excluding `camstim`) built by Colleen Gillon (colleen _dot_ gillon _at_ mail _dot_ utoronto _dot_ ca) and Henry Denny (henry _dot_ denny _at_ mail _dot_ mcgill _dot_ ca).
 
