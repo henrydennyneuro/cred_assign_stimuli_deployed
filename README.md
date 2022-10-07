@@ -39,11 +39,10 @@ Sparse Gabor sequences (adapted from [Homann _et al._, 2022, _PNAS_](https://www
 &nbsp;
 
 ## Scripts  
-### `pilot_scripts` : scripts used for the pilot deployment
-- `habituation_rig` : scripts used on the habituation rig. For each habituation day, a different script is used, shared across all subjects,  
-e.g., run `python pilot_scripts/habituation_rig/day7.py`.  
-- `ophys_rig` : scripts used on the optical physiology rig. For each experiment day, a different script is used, shared across all subjects,  
-e.g., run `python pilot_scripts/ophys_rig/ophys_record.py`.  
+### `pilot_scripts` : scripts used for deployment
+- `full_pipeline_script` : Contains flexible scripts that determines the session type, and generates a suitable hapituation or ophys presentation. When running locally, parameters parameters should be recieved from `localtestregimen` using the following command:
+`>python full_pipeline_script.py --json_path localtestregimen.yaml`.  
+- `localtestregimen` : scripts used to set durations for each stimulus. Full length presentation totalled 70 minutes.
 &nbsp;
 
 ### `production_scripts` : scripts used for the production deployment
