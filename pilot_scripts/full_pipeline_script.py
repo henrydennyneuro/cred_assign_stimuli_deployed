@@ -1370,6 +1370,7 @@ if __name__ == "__main__":
 
     dist = 15.0
     wid = 52.0
+    SIZEPIX = [1920, 1200]
     
     SESSION_PARAMS = {'type': SESSION_PARAMS_type, # type of session (hab or ophys)
                                    # entering 'hab' will remove any surprises
@@ -1403,13 +1404,15 @@ if __name__ == "__main__":
     else:
         monitor = monitor_name
 
+    #monitor.getSizePix()
+
     # randomly set a seed for the session and create a dictionary
     SESSION_PARAMS['seed'] = random.choice(range(0, 48000))
     # SESSION_PARAMS['seed'] = # override by setting seed manually
     SESSION_PARAMS['rng'] = np.random.RandomState(SESSION_PARAMS['seed'])
     
     # Create display window
-    window = Window(fullscr=True, # Will return an error due to default size. Ignore.
+    window = Window(fullscr=False, # Will return an error due to default size. Ignore.
                     monitor=monitor, 
                     screen=0,
                     warp=Warp.Spherical
@@ -1467,13 +1470,14 @@ if __name__ == "__main__":
         stim_order.append('grt')
 
     # initialize display order and times # AMENDED FOR PRODUCTION V2
-
+    print(stim_order)
     SESSION_PARAMS['rng'].shuffle(stim_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(sq_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(gab_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(rot_gab_order) # in place shuffling
     SESSION_PARAMS['rng'].shuffle(gab_block_order) # in place shuffling
-    
+    print(stim_order)
+
     start = SESSION_PARAMS['pre_blank'] # initial blank
     stimuli = []
     
@@ -1528,6 +1532,7 @@ if __name__ == "__main__":
                         start += MOVIE_PARAMS['movie_len']
                 for j in np.arange(MOVIE_PARAMS['vids_per_block']):
                     mov[str(j)].set_display_sequence(displayorder[str(j)])
+                    print(displayorder[str(j)])
                     stimuli.append(mov[str(j)])
             elif SESSION_PARAMS['type'] == 'hab':
                 for ii in np.arange(SESSION_PARAMS['movie_blocks']):
